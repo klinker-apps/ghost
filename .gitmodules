@@ -7,3 +7,6 @@
 [submodule "content/themes/shade"]
 	path = content/themes/shade
 	url = https://github.com/moso/shade-ghost-theme.git
+[submodule "content/themes/klinker-apps"]
+	path = content/themes/klinker-apps
+	url = git@github.com:klinker-apps/casper.git
