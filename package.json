@@ -20,7 +20,8 @@
   "scripts": {
     "preinstall": "node core/server/utils/npm/preinstall.js",
     "start": "node index",
-    "test": "grunt validate --verbose"
+    "test": "grunt validate --verbose",
+    "install": "grunt shell:bower default prod"
   },
   "engines": {
     "node": "^4.2.0 || ^6.9.0"

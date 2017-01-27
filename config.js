@@ -12,6 +12,8 @@ config = {
     // Configure your URL and mail settings here
     production: {
         url: 'https://klinkerapps-blog.herokuapp.com/',
+        fileStorage: false,
+        forceAdminSSL: true,
         mail: {},
         database: {  
             client: 'postgres',
