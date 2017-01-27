@@ -1,0 +1,14 @@
+postgres:
+  image: postgres:9.6.1
+ghost:
+  build: .
+  command: npm start --production
+  ports:
+    - "2368:2368"
+  volumes:
+    - ./:/app
+  environment:
+    - DATABASE_URL=postgres://postgres@postgres:5432/postgres
+    - PORT=2368
+  links:
+    - postgres
