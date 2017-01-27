@@ -4,3 +4,6 @@
 [submodule "core/client"]
 	path = core/client
 	url = https://github.com/TryGhost/Ghost-Admin.git
+[submodule "content/themes/shade"]
+	path = content/themes/shade
+	url = https://github.com/moso/shade-ghost-theme.git
