@@ -11,7 +11,7 @@ config = {
     // When running Ghost in the wild, use the production environment.
     // Configure your URL and mail settings here
     production: {
-        url: 'http://blog.klinkerapps.com/',
+        url: 'https://blog.klinkerapps.com/',
         fileStorage: false,
         forceAdminSSL: true,
         mail: {},
