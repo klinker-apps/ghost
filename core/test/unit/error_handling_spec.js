@@ -5,6 +5,7 @@ var should     = require('should'),
     rewire     = require('rewire'),
 
     // Stuff we are testing
+    fs         = require('fs'),
     chalk      = require('chalk'),
     errors     = rewire('../../server/errors'),
     configUtils = require('../utils/configUtils'),
@@ -319,7 +320,6 @@ describe('Error handling', function () {
                     themePath: '/content/themes',
                     availableThemes: {
                         casper: {
-                            assets: null,
                             'default.hbs': '/content/themes/casper/default.hbs',
                             'index.hbs': '/content/themes/casper/index.hbs',
                             'page.hbs': '/content/themes/casper/page.hbs',
@@ -492,6 +492,11 @@ describe('Error handling', function () {
                     }
                 },
                 next = null;
+
+            sandbox.stub(fs, 'stat', function (path, cb) {
+                cb(null, {isFile: function () { return true; }});
+            });
+
             errors.updateActiveTheme('theme-with-error');
             errors.renderErrorPage(statusCode, error, req, res, next);
         });
