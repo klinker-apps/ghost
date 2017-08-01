@@ -8,10 +8,8 @@ var Promise       = require('bluebird'),
     Models        = require('../models'),
     utils         = require('./utils'),
     notifications = require('./notifications'),
-    docName       = 'mail',
     i18n          = require('../i18n'),
-    mode          = process.env.NODE_ENV,
-    testing       = mode !== 'production' && mode !== 'development',
+    docName       = 'mail',
     mailer,
     apiMail;
 
@@ -19,7 +17,7 @@ var Promise       = require('bluebird'),
  * Send mail helper
  */
 function sendMail(object) {
-    if (!(mailer instanceof mail.GhostMailer) || testing) {
+    if (!(mailer instanceof mail.GhostMailer)) {
         mailer = new mail.GhostMailer();
     }
 
@@ -31,14 +29,18 @@ function sendMail(object) {
                     message: [
                         i18n.t('warnings.index.unableToSendEmail'),
                         i18n.t('common.seeLinkForInstructions',
+<<<<<<< HEAD
                             {link: '<a href=\'https://docs.ghost.org/v0.11.9/docs/mail-config\' target=\'_blank\'>https://docs.ghost.org/v0.11.9/docs/mail-config</a>'})
+=======
+                            {link: '<a href=\'https://docs.ghost.org/v1.0.0/docs/mail-config\' target=\'_blank\'>Checkout our mail configuration docs!</a>'})
+>>>>>>> c16a58cf6836bab5075e5869d1f7b9a656ac18c9
                     ].join(' ')
                 }]},
                 {context: {internal: true}}
             );
         }
 
-        return Promise.reject(new errors.EmailError(err.message));
+        return Promise.reject(new errors.EmailError({err: err}));
     });
 }
 

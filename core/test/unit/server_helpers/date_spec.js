@@ -1,21 +1,10 @@
-var should         = require('should'),
-    hbs            = require('express-hbs'),
-    utils          = require('./utils'),
+var should = require('should'), // jshint ignore:line
 
 // Stuff we are testing
-    handlebars     = hbs.handlebars,
-    helpers        = require('../../../server/helpers'),
-    moment         = require('moment-timezone');
+    helpers = require('../../../server/helpers'),
+    moment = require('moment-timezone');
 
 describe('{{date}} helper', function () {
-    before(function () {
-        utils.loadHelpers();
-    });
-
-    it('is loaded', function () {
-        should.exist(handlebars.helpers.date);
-    });
-
     it('creates properly formatted date strings', function () {
         var testDates = [
                 '2013-12-31T11:28:58.593+02:00',
@@ -40,7 +29,7 @@ describe('{{date}} helper', function () {
             var rendered = helpers.date.call({published_at: d}, context);
 
             should.exist(rendered);
-            rendered.should.equal(moment(d).tz(timezones).format(format));
+            String(rendered).should.equal(moment(d).tz(timezones).format(format));
         });
     });
 
@@ -68,7 +57,7 @@ describe('{{date}} helper', function () {
             var rendered = helpers.date.call({published_at: d}, context);
 
             should.exist(rendered);
-            rendered.should.equal(moment(d).tz(timezones).from(timeNow));
+            String(rendered).should.equal(moment(d).tz(timezones).from(timeNow));
         });
     });
 });

@@ -1,13 +1,13 @@
-var testUtils = require('../../utils'),
-    should    = require('should'),
-    _         = require('lodash'),
+var should = require('should'),
+    testUtils = require('../../utils'),
+    _ = require('lodash'),
 
 // Stuff we are testing
-    PostAPI   = require('../../../server/api/posts'),
-    TagAPI    = require('../../../server/api/tags'),
-    UserAPI   = require('../../../server/api/users');
+    PostAPI = require('../../../server/api/posts'),
+    TagAPI = require('../../../server/api/tags'),
+    UserAPI = require('../../../server/api/users');
 
-describe('Filter Param Spec', function () {
+describe('Advanced Browse', function () {
     // Initialise the DB just once, the tests are fetch-only
     before(testUtils.teardown);
     before(testUtils.setup('filter'));
@@ -20,7 +20,11 @@ describe('Filter Param Spec', function () {
     describe('Advanced Use Cases', function () {
         describe('1. Posts - filter: "tags: [photo, video] + id: -4", limit: "3", include: "tags"', function () {
             it('Will fetch 3 posts with tags which match `photo` or `video` and are not the post with id 4.', function (done) {
-                PostAPI.browse({filter: 'tags: [photo, video] + id: -4', limit: 3, include: 'tags'}).then(function (result) {
+                PostAPI.browse({
+                    filter: 'tags: [photo, video] + id: -' + testUtils.filterData.data.posts[3].id,
+                    limit: 3,
+                    include: 'tags'
+                }).then(function (result) {
                     var ids;
                     // 1. Result should have the correct base structure
                     should.exist(result);
@@ -33,14 +37,14 @@ describe('Filter Param Spec', function () {
 
                     // None of the items returned should be the post with id 4, as that was excluded
                     ids = _.map(result.posts, 'id');
-                    ids.should.not.containEql(4);
+                    ids.should.not.containEql(testUtils.filterData.data.posts[3].id);
 
                     // Should not contain draft
-                    ids.should.not.containEql(19);
+                    ids.should.not.containEql(testUtils.filterData.data.posts[18].id);
 
                     // The ordering specifies that any post which matches both tags should be first
                     // Post 2 is the first in the list to have both tags
-                    ids[0].should.eql(2);
+                    ids[0].should.eql(testUtils.filterData.data.posts[1].id);
 
                     // Each post should have a tag which matches either 'photo' or 'video'
                     _.each(result.posts, function (post) {
@@ -69,7 +73,10 @@ describe('Filter Param Spec', function () {
 
         describe('2. Posts - filter: "tag:photo,featured:true,image:-null", include: "tags"', function () {
             it('Will fetch posts which have either a tag of `photo`, are marked `featured` or have an image.', function (done) {
-                PostAPI.browse({filter: 'tag:photo,featured:true,image:-null', include: 'tags'}).then(function (result) {
+                PostAPI.browse({
+                    filter: 'tag:photo,featured:true,feature_image:-null',
+                    include: 'tags'
+                }).then(function (result) {
                     var ids;
 
                     // 1. Result should have the correct base structure
@@ -82,7 +89,17 @@ describe('Filter Param Spec', function () {
                     result.posts.should.be.an.Array().with.lengthOf(9);
 
                     ids = _.map(result.posts, 'id');
-                    ids.should.eql([14, 11, 9, 8, 7, 6, 5, 3, 2]);
+                    ids.should.eql([
+                        testUtils.filterData.data.posts[13].id,
+                        testUtils.filterData.data.posts[10].id,
+                        testUtils.filterData.data.posts[8].id,
+                        testUtils.filterData.data.posts[7].id,
+                        testUtils.filterData.data.posts[6].id,
+                        testUtils.filterData.data.posts[5].id,
+                        testUtils.filterData.data.posts[4].id,
+                        testUtils.filterData.data.posts[2].id,
+                        testUtils.filterData.data.posts[1].id
+                    ]);
 
                     _.each(result.posts, function (post) {
                         post.page.should.be.false();
@@ -109,7 +126,12 @@ describe('Filter Param Spec', function () {
         describe.skip('3. Tags - filter="count.posts:>=1" order="count.posts DESC" limit="all"', function () {
             // @TODO add support for counts/aggregates in order & filter params
             it('Will fetch all tags, ordered by post count, where the post count is at least 1.', function (done) {
-                TagAPI.browse({filter: 'count.posts:>=1', order: 'count.posts DESC', limit: 'all', include: 'count.posts'}).then(function (result) {
+                TagAPI.browse({
+                    filter: 'count.posts:>=1',
+                    order: 'count.posts DESC',
+                    limit: 'all',
+                    include: 'count.posts'
+                }).then(function (result) {
                     // 1. Result should have the correct base structure
                     should.exist(result);
                     result.should.have.property('tags');
@@ -135,7 +157,10 @@ describe('Filter Param Spec', function () {
         describe('4. Posts - filter="author:[leslie,pat]+(tag:audio,image:-null)"', function () {
             // Note that `pat` doesn't exist (it's `pat-smith`)
             it('Will fetch posts by the author `leslie` or `pat` which are either have tag `audio` or an image.', function (done) {
-                PostAPI.browse({filter: 'author:[leslie,pat]+(tag:audio,image:-null)', include: 'author,tags'}).then(function (result) {
+                PostAPI.browse({
+                    filter: 'author:[leslie,pat]+(tag:audio,feature_image:-null)',
+                    include: 'author,tags'
+                }).then(function (result) {
                     var ids, authors;
                     // 1. Result should have the correct base structure
                     should.exist(result);
@@ -156,8 +181,8 @@ describe('Filter Param Spec', function () {
                     _.each(result.posts, function (post) {
                         var tags = _.map(post.tags, 'slug');
                         // This construct ensures we get an assertion or a failure
-                        if (!_.isEmpty(post.image)) {
-                            post.image.should.not.be.empty();
+                        if (!_.isEmpty(post.feature_image)) {
+                            post.feature_image.should.not.be.empty();
                         } else {
                             tags = _.map(post.tags, 'slug');
                             tags.should.containEql('audio');
@@ -165,7 +190,14 @@ describe('Filter Param Spec', function () {
                     });
 
                     ids = _.map(result.posts, 'id');
-                    ids.should.eql([14, 12, 11, 9, 8, 7]);
+                    ids.should.eql([
+                        testUtils.filterData.data.posts[13].id,
+                        testUtils.filterData.data.posts[11].id,
+                        testUtils.filterData.data.posts[10].id,
+                        testUtils.filterData.data.posts[8].id,
+                        testUtils.filterData.data.posts[7].id,
+                        testUtils.filterData.data.posts[6].id
+                    ]);
 
                     // 3. The meta object should contain the right details
                     result.meta.should.have.property('pagination');
@@ -185,7 +217,11 @@ describe('Filter Param Spec', function () {
         describe.skip('5. Users - filter="posts.tags:photo" order="count.posts DESC" limit="3"', function () {
             // @TODO: add support for joining through posts and tags for users
             it('Will fetch the 3 most prolific users who write posts with the tag `photo` ordered by most posts.', function (done) {
-                UserAPI.browse({filter: 'posts.tags:special', order: 'count.posts DESC', limit: 3}).then(function (result) {
+                UserAPI.browse({
+                    filter: 'posts.tags:special',
+                    order: 'count.posts DESC',
+                    limit: 3
+                }).then(function (result) {
                     var ids;
                     // 1. Result should have the correct base structure
                     should.exist(result);
@@ -197,7 +233,11 @@ describe('Filter Param Spec', function () {
                     result.users.should.be.an.Array().with.lengthOf(2);
 
                     ids = _.map(result.users, 'id');
-                    ids.should.eql([1, 2]);
+
+                    ids.should.eql([
+                        testUtils.filterData.data.posts[0].id,
+                        testUtils.filterData.data.posts[1].id
+                    ]);
 
                     // TODO: add the order
                     // TODO: manage the count
@@ -219,7 +259,11 @@ describe('Filter Param Spec', function () {
 
         describe.skip('6. Posts filter="published_at:>\'2015-07-20\'" limit="5"}}', function () {
             it('Will fetch 5 posts after a given date.', function (done) {
-                PostAPI.browse({filter: 'published_at:>\'2015-07-20\'', limit: 5, include: 'tags'}).then(function (result) {
+                PostAPI.browse({
+                    filter: 'published_at:>\'2015-07-20\'',
+                    limit: 5,
+                    include: 'tags'
+                }).then(function (result) {
                     // 1. Result should have the correct base structure
                     should.exist(result);
                     result.should.have.property('posts');
@@ -252,7 +296,11 @@ describe('Filter Param Spec', function () {
                     result.users.should.be.an.Array().with.lengthOf(2);
 
                     ids = _.map(result.users, 'id');
-                    ids.should.eql([2, 1]);
+
+                    ids.should.eql([
+                        testUtils.filterData.data.users[1].id,
+                        testUtils.filterData.data.users[0].id
+                    ]);
 
                     should.exist(result.users[0].website);
                     should.exist(result.users[1].website);
@@ -274,7 +322,7 @@ describe('Filter Param Spec', function () {
 
         describe('8. Tags filter: "image:-null+description:-null"', function () {
             it('Will fetch tags which have an image and a description', function (done) {
-                TagAPI.browse({filter: 'image:-null+description:-null', order: 'name ASC'}).then(function (result) {
+                TagAPI.browse({filter: 'feature_image:-null+description:-null', order: 'name ASC'}).then(function (result) {
                     var ids;
                     // 1. Result should have the correct base structure
                     should.exist(result);
@@ -286,15 +334,16 @@ describe('Filter Param Spec', function () {
                     result.tags.should.be.an.Array().with.lengthOf(3);
 
                     ids = _.map(result.tags, 'id');
-                    ids.should.containEql(4);
-                    ids.should.containEql(3);
-                    ids.should.containEql(2);
+                    ids.should.containEql(testUtils.filterData.data.tags[3].id);
+                    ids.should.containEql(testUtils.filterData.data.tags[2].id);
+                    ids.should.containEql(testUtils.filterData.data.tags[1].id);
+
                     // @TODO standardise how alphabetical ordering is done across DBs (see #6104)
                     // ids.should.eql([4, 2, 3]);
 
-                    should.exist(result.tags[0].image);
-                    should.exist(result.tags[1].image);
-                    should.exist(result.tags[2].image);
+                    should.exist(result.tags[0].feature_image);
+                    should.exist(result.tags[1].feature_image);
+                    should.exist(result.tags[2].feature_image);
 
                     should.exist(result.tags[0].description);
                     should.exist(result.tags[1].description);
@@ -406,7 +455,14 @@ describe('Filter Param Spec', function () {
                 }).count.posts.should.eql(3);
 
                 ids = _.map(result.tags, 'id');
-                ids.should.eql([4, 3, 1, 2, 6, 5]);
+                ids.should.eql([
+                    testUtils.filterData.data.tags[3].id,
+                    testUtils.filterData.data.tags[2].id,
+                    testUtils.filterData.data.tags[0].id,
+                    testUtils.filterData.data.tags[1].id,
+                    testUtils.filterData.data.tags[5].id,
+                    testUtils.filterData.data.tags[4].id
+                ]);
 
                 // 3. The meta object should contain the right details
                 result.meta.should.have.property('pagination');
@@ -493,7 +549,12 @@ describe('Filter Param Spec', function () {
                 }).count.posts.should.eql(0);
 
                 ids = _.map(result.users, 'id');
-                ids.should.eql([3, 2, 1]);
+
+                ids.should.eql([
+                    testUtils.filterData.data.users[2].id,
+                    testUtils.filterData.data.users[1].id,
+                    testUtils.filterData.data.users[0].id
+                ]);
 
                 // 3. The meta object should contain the right details
                 result.meta.should.have.property('pagination');
@@ -534,7 +595,12 @@ describe('Filter Param Spec', function () {
                     result.posts.should.be.an.Array().with.lengthOf(4);
 
                     ids = _.map(result.posts, 'id');
-                    ids.should.eql([11, 9, 3, 2]);
+                    ids.should.eql([
+                        testUtils.filterData.data.posts[10].id,
+                        testUtils.filterData.data.posts[8].id,
+                        testUtils.filterData.data.posts[2].id,
+                        testUtils.filterData.data.posts[1].id
+                    ]);
 
                     // 3. The meta object should contain the right details
                     result.meta.should.have.property('pagination');
@@ -554,7 +620,12 @@ describe('Filter Param Spec', function () {
             });
 
             it('Will fetch posts with a given author', function (done) {
-                PostAPI.browse({filter: 'author:leslie', include: 'tag,author', limit: 5, page: 2}).then(function (result) {
+                PostAPI.browse({
+                    filter: 'author:leslie',
+                    include: 'tag,author',
+                    limit: 5,
+                    page: 2
+                }).then(function (result) {
                     var ids;
                     // 1. Result should have the correct base structure
                     should.exist(result);
@@ -566,7 +637,13 @@ describe('Filter Param Spec', function () {
                     result.posts.should.be.an.Array().with.lengthOf(5);
 
                     ids = _.map(result.posts, 'id');
-                    ids.should.eql([13, 12, 11, 10, 9]);
+                    ids.should.eql([
+                        testUtils.filterData.data.posts[12].id,
+                        testUtils.filterData.data.posts[11].id,
+                        testUtils.filterData.data.posts[10].id,
+                        testUtils.filterData.data.posts[9].id,
+                        testUtils.filterData.data.posts[8].id
+                    ]);
 
                     // 3. The meta object should contain the right details
                     result.meta.should.have.property('pagination');
@@ -600,7 +677,23 @@ describe('Filter Param Spec', function () {
                     result.posts.should.be.an.Array().with.lengthOf(15);
 
                     ids = _.map(result.posts, 'id');
-                    ids.should.eql([20, 18, 17, 16, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4]);
+                    ids.should.eql([
+                        testUtils.filterData.data.posts[19].id,
+                        testUtils.filterData.data.posts[17].id,
+                        testUtils.filterData.data.posts[16].id,
+                        testUtils.filterData.data.posts[15].id,
+                        testUtils.filterData.data.posts[13].id,
+                        testUtils.filterData.data.posts[12].id,
+                        testUtils.filterData.data.posts[11].id,
+                        testUtils.filterData.data.posts[10].id,
+                        testUtils.filterData.data.posts[9].id,
+                        testUtils.filterData.data.posts[8].id,
+                        testUtils.filterData.data.posts[7].id,
+                        testUtils.filterData.data.posts[6].id,
+                        testUtils.filterData.data.posts[5].id,
+                        testUtils.filterData.data.posts[4].id,
+                        testUtils.filterData.data.posts[3].id
+                    ]);
 
                     // 3. The meta object should contain the right details
                     result.meta.should.have.property('pagination');
@@ -637,7 +730,11 @@ describe('Filter Param Spec', function () {
 
                     // Match exact items
                     ids = _.map(result.posts, 'id');
-                    ids.should.eql([14, 8, 5]);
+                    ids.should.eql([
+                        testUtils.filterData.data.posts[13].id,
+                        testUtils.filterData.data.posts[7].id,
+                        testUtils.filterData.data.posts[4].id
+                    ]);
 
                     // 3. The meta object should contain the right details
                     result.meta.should.have.property('pagination');
@@ -674,7 +771,23 @@ describe('Filter Param Spec', function () {
 
                     // Match exact items
                     ids = _.map(result.posts, 'id');
-                    ids.should.eql([20, 18, 17, 16, 13, 12, 11, 10, 9, 7, 6, 4, 3, 2, 1]);
+                    ids.should.eql([
+                        testUtils.filterData.data.posts[19].id,
+                        testUtils.filterData.data.posts[17].id,
+                        testUtils.filterData.data.posts[16].id,
+                        testUtils.filterData.data.posts[15].id,
+                        testUtils.filterData.data.posts[12].id,
+                        testUtils.filterData.data.posts[11].id,
+                        testUtils.filterData.data.posts[10].id,
+                        testUtils.filterData.data.posts[9].id,
+                        testUtils.filterData.data.posts[8].id,
+                        testUtils.filterData.data.posts[6].id,
+                        testUtils.filterData.data.posts[5].id,
+                        testUtils.filterData.data.posts[3].id,
+                        testUtils.filterData.data.posts[2].id,
+                        testUtils.filterData.data.posts[1].id,
+                        testUtils.filterData.data.posts[0].id
+                    ]);
 
                     // 3. The meta object should contain the right details
                     result.meta.should.have.property('pagination');
@@ -713,7 +826,26 @@ describe('Filter Param Spec', function () {
 
                     // Match exact items
                     ids = _.map(result.posts, 'id');
-                    ids.should.eql([20, 18, 17, 16, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1]);
+                    ids.should.eql([
+                        testUtils.filterData.data.posts[19].id,
+                        testUtils.filterData.data.posts[17].id,
+                        testUtils.filterData.data.posts[16].id,
+                        testUtils.filterData.data.posts[15].id,
+                        testUtils.filterData.data.posts[13].id,
+                        testUtils.filterData.data.posts[12].id,
+                        testUtils.filterData.data.posts[11].id,
+                        testUtils.filterData.data.posts[10].id,
+                        testUtils.filterData.data.posts[9].id,
+                        testUtils.filterData.data.posts[8].id,
+                        testUtils.filterData.data.posts[7].id,
+                        testUtils.filterData.data.posts[6].id,
+                        testUtils.filterData.data.posts[5].id,
+                        testUtils.filterData.data.posts[4].id,
+                        testUtils.filterData.data.posts[3].id,
+                        testUtils.filterData.data.posts[2].id,
+                        testUtils.filterData.data.posts[1].id,
+                        testUtils.filterData.data.posts[0].id
+                    ]);
 
                     // 3. The meta object should contain the right details
                     result.meta.should.have.property('pagination');
@@ -751,7 +883,10 @@ describe('Filter Param Spec', function () {
 
                     // Match exact items
                     ids = _.map(result.posts, 'id');
-                    ids.should.eql([21, 15]);
+                    ids.should.eql([
+                        testUtils.filterData.data.posts[20].id,
+                        testUtils.filterData.data.posts[14].id
+                    ]);
 
                     // 3. The meta object should contain the right details
                     result.meta.should.have.property('pagination');

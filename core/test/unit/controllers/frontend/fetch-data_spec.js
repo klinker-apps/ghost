@@ -1,39 +1,39 @@
-var should   = require('should'),
-    sinon    = require('sinon'),
-    Promise  = require('bluebird'),
-    _        = require('lodash'),
-
+var should = require('should'),
+    sinon = require('sinon'),
+    Promise = require('bluebird'),
     // Stuff we are testing
-    api      = require('../../../../server/api'),
+    api = require('../../../../server/api'),
+    themes = require('../../../../server/themes'),
     fetchData = require('../../../../server/controllers/frontend/fetch-data'),
-
-    config   = require('../../../../server/config'),
-    origConfig = _.cloneDeep(config),
-
+    configUtils = require('../../../utils/configUtils'),
     sandbox = sinon.sandbox.create();
 
 describe('fetchData', function () {
     var apiPostsStub,
         apiTagStub,
-        apiUserStub;
+        apiUserStub,
+        themeConfigStub;
 
     beforeEach(function () {
         apiPostsStub = sandbox.stub(api.posts, 'browse')
             .returns(new Promise.resolve({posts: [], meta: {pagination: {}}}));
+
         apiTagStub = sandbox.stub(api.tags, 'read').returns(new Promise.resolve({tags: []}));
         apiUserStub = sandbox.stub(api.users, 'read').returns(new Promise.resolve({users: []}));
+
+        themeConfigStub = sandbox.stub().withArgs('posts_per_page').returns(10);
+
+        sandbox.stub(themes, 'getActive').returns({
+            config: themeConfigStub
+        });
     });
 
     afterEach(function () {
-        config.set(origConfig);
+        configUtils.restore();
         sandbox.restore();
     });
 
     describe('channel config', function () {
-        beforeEach(function () {
-            config.set({theme: {postsPerPage: 10}});
-        });
-
         it('should handle no post options', function (done) {
             fetchData({}).then(function (result) {
                 should.exist(result);
@@ -71,10 +71,14 @@ describe('fetchData', function () {
                     featured: {
                         type: 'browse',
                         resource: 'posts',
-                        options: {filter: 'featured:true', limit: 3}
+                        options: {
+                            filter: 'featured:true',
+                            limit: 3
+                        }
                     }
                 }
             };
+
             fetchData(channelOpts).then(function (result) {
                 should.exist(result);
                 result.should.be.an.Object().with.properties('posts', 'meta', 'data');
@@ -93,7 +97,9 @@ describe('fetchData', function () {
 
         it('should handle multiple queries with page param', function (done) {
             var channelOpts = {
-                postOptions: {page: 2},
+                postOptions: {
+                    page: 2
+                },
                 data: {
                     featured: {
                         type: 'browse',
@@ -102,6 +108,7 @@ describe('fetchData', function () {
                     }
                 }
             };
+
             fetchData(channelOpts).then(function (result) {
                 should.exist(result);
 
@@ -150,10 +157,6 @@ describe('fetchData', function () {
     });
 
     describe('valid postsPerPage', function () {
-        beforeEach(function () {
-            config.set({theme: {postsPerPage: 10}});
-        });
-
         it('Adds limit & includes to options by default', function (done) {
             fetchData({}).then(function () {
                 apiPostsStub.calledOnce.should.be.true();
@@ -167,7 +170,7 @@ describe('fetchData', function () {
 
     describe('invalid postsPerPage', function () {
         beforeEach(function () {
-            config.set({theme: {postsPerPage: '-1'}});
+            themeConfigStub.withArgs('posts_per_page').returns(-1);
         });
 
         it('Will not add limit if postsPerPage is not valid', function (done) {

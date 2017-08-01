@@ -1,9 +1,10 @@
-var should  = require('should'),
-    sinon   = require('sinon'),
-    _       = require('lodash'),
+var should = require('should'),
+    sinon = require('sinon'),
+    _ = require('lodash'),
     Promise = require('bluebird'),
-
+    ObjectId = require('bson-objectid'),
     permissions = require('../../server/permissions'),
+    errors = require('../../server/errors'),
     apiUtils = require('../../server/api/utils'),
 
     sandbox = sinon.sandbox.create();
@@ -137,9 +138,10 @@ describe('API Utils', function () {
         });
 
         it('should allow idDefaultOptions when passed', function (done) {
-            // test read
+            var id = ObjectId.generate();
+
             apiUtils.validate('test', {opts: apiUtils.idDefaultOptions})(
-                {id: 5, context: 'stuff'}
+                {id: id, context: 'stuff'}
             ).then(function (options) {
                 options.should.not.have.ownProperty('data');
                 options.should.not.have.ownProperty('include');
@@ -149,7 +151,7 @@ describe('API Utils', function () {
                 options.should.have.ownProperty('context');
                 options.context.should.eql('stuff');
                 options.should.have.ownProperty('id');
-                options.id.should.eql(5);
+                options.id.should.eql(id);
 
                 done();
             }).catch(done);
@@ -199,8 +201,8 @@ describe('API Utils', function () {
         }
 
         it('can validate `id`', function () {
-            valid = [1, '1', 304, '304'];
-            invalid = ['test', 'de305d54'];
+            valid = [ObjectId.generate(), '1', 1];
+            invalid = ['test', 'de305d54', 300, '304'];
 
             check('id', valid, invalid);
         });
@@ -418,7 +420,10 @@ describe('API Utils', function () {
     describe('checkFileIsValid', function () {
         it('returns true if file has valid extension and type', function () {
             apiUtils.checkFileIsValid({name: 'test.txt', mimetype: 'text'}, ['text'], ['.txt']).should.be.true();
-            apiUtils.checkFileIsValid({name: 'test.jpg', mimetype: 'jpeg'}, ['text', 'jpeg'], ['.txt', '.jpg']).should.be.true();
+            apiUtils.checkFileIsValid({
+                name: 'test.jpg',
+                mimetype: 'jpeg'
+            }, ['text', 'jpeg'], ['.txt', '.jpg']).should.be.true();
         });
 
         it('returns false if file has invalid extension', function () {
@@ -485,7 +490,7 @@ describe('API Utils', function () {
         it('should throw a permissions error if permission is not granted', function (done) {
             var cTMethodStub = {
                     test: {
-                        test: sandbox.stub().returns(Promise.reject())
+                        test: sandbox.stub().returns(Promise.reject(new errors.NoPermissionError()))
                     }
                 },
                 cTStub = sandbox.stub(permissions, 'canThis').returns(cTMethodStub);
@@ -497,7 +502,7 @@ describe('API Utils', function () {
                 cTMethodStub.test.test.calledOnce.should.eql(true);
                 err.errorType.should.eql('NoPermissionError');
                 done();
-            }).catch(done);
+            });
         });
     });
 });

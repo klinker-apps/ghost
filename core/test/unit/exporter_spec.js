@@ -1,20 +1,22 @@
-var should    = require('should'),
-    sinon     = require('sinon'),
-    Promise   = require('bluebird'),
-
-    // Stuff we're testing
-    db        = require('../../server/data/db'),
-    errors    = require('../../server/errors'),
-    exporter  = require('../../server/data/export'),
-    schema    = require('../../server/data/schema'),
-    settings  = require('../../server/api/settings'),
-
+var should = require('should'),
+    sinon = require('sinon'),
+    rewire = require('rewire'),
+    Promise = require('bluebird'),
+    db = require('../../server/data/db'),
+    errors = require('../../server/errors'),
+    exporter = rewire('../../server/data/export'),
+    schema = require('../../server/data/schema'),
+    models = require('../../server/models'),
     schemaTables = Object.keys(schema.tables),
 
     sandbox = sinon.sandbox.create();
 
 describe('Exporter', function () {
-    var versionStub, tablesStub, queryMock, knexMock, knexStub;
+    var tablesStub, queryMock, knexMock, knexStub;
+
+    before(function () {
+        models.init();
+    });
 
     afterEach(function () {
         sandbox.restore();
@@ -23,7 +25,10 @@ describe('Exporter', function () {
 
     describe('doExport', function () {
         beforeEach(function () {
-            versionStub = sandbox.stub(schema.versioning, 'getDatabaseVersion').returns(new Promise.resolve('004'));
+            exporter.__set__('ghostVersion', {
+                full: '1.0.0'
+            });
+
             tablesStub = sandbox.stub(schema.commands, 'getTables').returns(schemaTables);
 
             queryMock = {
@@ -33,7 +38,11 @@ describe('Exporter', function () {
             knexMock = sandbox.stub().returns(queryMock);
 
             // this MUST use sinon, not sandbox, see sinonjs/sinon#781
-            knexStub = sinon.stub(db, 'knex', {get: function () { return knexMock; }});
+            knexStub = sinon.stub(db, 'knex', {
+                get: function () {
+                    return knexMock;
+                }
+            });
         });
 
         it('should try to export all the correct tables', function (done) {
@@ -47,7 +56,8 @@ describe('Exporter', function () {
 
                 should.exist(exportData);
 
-                versionStub.calledOnce.should.be.true();
+                exportData.meta.version.should.eql('1.0.0');
+
                 tablesStub.calledOnce.should.be.true();
                 knexStub.get.called.should.be.true();
                 knexMock.called.should.be.true();
@@ -82,22 +92,28 @@ describe('Exporter', function () {
 
         it('should catch and log any errors', function (done) {
             // Setup for failure
-            var errorStub = sandbox.stub(errors, 'logAndThrowError');
             queryMock.select.returns(new Promise.reject({}));
 
             // Execute
-            exporter.doExport().then(function (exportData) {
-                should.not.exist(exportData);
-                errorStub.calledOnce.should.be.true();
-                done();
-            }).catch(done);
+            exporter.doExport()
+                .then(function () {
+                    done(new Error('expected error for export'));
+                })
+                .catch(function (err) {
+                    (err instanceof errors.DataExportError).should.eql(true);
+                    done();
+                });
         });
     });
 
     describe('exportFileName', function () {
         it('should return a correctly structured filename', function (done) {
-            var settingsStub = sandbox.stub(settings, 'read').returns(
-                new Promise.resolve({settings: [{value: 'testblog'}]})
+            var settingsStub = sandbox.stub(models.Settings, 'findOne').returns(
+                new Promise.resolve({
+                    get: function () {
+                        return 'testblog';
+                    }
+                })
             );
 
             exporter.fileName().then(function (result) {
@@ -110,7 +126,7 @@ describe('Exporter', function () {
         });
 
         it('should return a correctly structured filename if settings is empty', function (done) {
-            var settingsStub = sandbox.stub(settings, 'read').returns(
+            var settingsStub = sandbox.stub(models.Settings, 'findOne').returns(
                 new Promise.resolve()
             );
 
@@ -124,7 +140,7 @@ describe('Exporter', function () {
         });
 
         it('should return a correctly structured filename if settings errors', function (done) {
-            var settingsStub = sandbox.stub(settings, 'read').returns(
+            var settingsStub = sandbox.stub(models.Settings, 'findOne').returns(
                 new Promise.reject()
             );
 

@@ -1,5 +1,6 @@
-var getSchema = require('../../../server/data/meta/schema'),
-    should = require('should');
+var should = require('should'),
+    getSchema = require('../../../server/data/meta/schema'),
+    markdownToMobiledoc = require('../../utils/fixtures/data-generator').markdownToMobiledoc;
 
 describe('getSchema', function () {
     it('should return post schema if context starts with post', function (done) {
@@ -37,7 +38,8 @@ describe('getSchema', function () {
                 }
             },
             keywords: ['one', 'two', 'tag'],
-            metaDescription: 'Post meta description'
+            metaDescription: 'Post meta description',
+            excerpt: 'Custom excerpt for description'
         },  data = {
             context: ['post'],
             post: {
@@ -56,7 +58,6 @@ describe('getSchema', function () {
             '@type': 'Article',
             author: {
                 '@type': 'Person',
-                description: 'My author bio.',
                 image: {
                     '@type': 'ImageObject',
                     url: 'http://mysite.com/author/image/url/me.jpg',
@@ -73,7 +74,7 @@ describe('getSchema', function () {
             },
             dateModified: '2016-01-21T22:13:05.412Z',
             datePublished: '2015-12-25T05:35:01.234Z',
-            description: 'Post meta description',
+            description: 'Custom excerpt for description',
             headline: 'Post Title',
             image: {
                 '@type': 'ImageObject',
@@ -136,13 +137,14 @@ describe('getSchema', function () {
                 }
             },
             keywords: ['one', 'two', 'tag'],
-            metaDescription: 'Post meta description'
+            metaDescription: 'Post meta description',
+            excerpt: 'Post meta description'
         },  data = {
             context: ['amp', 'post'],
             post: {
                 title: 'Post Title',
                 slug: 'my-amp-post-slug',
-                markdown: 'some markdown',
+                mobiledoc: markdownToMobiledoc('some markdown'),
                 html: 'some html',
                 author: {
                     name: 'Post Author',
@@ -159,7 +161,6 @@ describe('getSchema', function () {
             '@type': 'Article',
             author: {
                 '@type': 'Person',
-                description: 'My author bio.',
                 image: {
                     '@type': 'ImageObject',
                     url: 'http://mysite.com/author/image/url/me.jpg',
@@ -219,7 +220,8 @@ describe('getSchema', function () {
             modifiedDate: '2016-01-21T22:13:05.412Z',
             coverImage: undefined,
             keywords: [],
-            metaDescription: 'Post meta description'
+            metaDescription: '',
+            excerpt: 'Post meta description'
         },  data = {
             context: ['post'],
             post: {
@@ -283,7 +285,8 @@ describe('getSchema', function () {
                 url: 'http://mysite.com/content/image/mypostcoverimage.jpg'
             },
             keywords: ['one', 'two', 'tag'],
-            metaDescription: 'Post meta description'
+            metaDescription: 'Post meta description',
+            excerpt: 'Post meta description'
         },  data = {
             context: ['post'],
             post: {
@@ -292,7 +295,8 @@ describe('getSchema', function () {
                     website: 'http://myblogsite.com/',
                     bio: 'My author bio.',
                     facebook: 'testuser',
-                    twitter: '@testuser'
+                    twitter: '@testuser',
+                    metaDescription: 'My author bio.'
                 }
             }
         }, schema = getSchema(metadata, data);

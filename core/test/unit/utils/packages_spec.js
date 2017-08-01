@@ -1,20 +1,30 @@
+<<<<<<< HEAD
 var should = require('should'),
+=======
+var should = require('should'), // jshint ignore:line
+>>>>>>> c16a58cf6836bab5075e5869d1f7b9a656ac18c9
     tmp = require('tmp'),
     join = require('path').join,
     fs = require('fs'),
 
     // Things we are testing
+<<<<<<< HEAD
     readThemes = require('../../../server/utils/read-themes'),
+=======
+>>>>>>> c16a58cf6836bab5075e5869d1f7b9a656ac18c9
     packages = require('../../../server/utils/packages'),
     parsePackageJson = packages.parsePackageJSON,
     filterPackages = packages.filterPackages;
 
+<<<<<<< HEAD
 // To stop jshint complaining
 should.equal(true, true);
 
 // To stop jshint complaining
 should.equal(true, true);
 
+=======
+>>>>>>> c16a58cf6836bab5075e5869d1f7b9a656ac18c9
 describe('Package Utils', function () {
     describe('Parse Package.json', function () {
         it('should parse valid package.json', function (done) {
@@ -58,7 +68,11 @@ describe('Package Utils', function () {
                 .catch(function (err) {
                     err.message.should.equal('"name" or "version" is missing from theme package.json file.');
                     err.context.should.equal(tmpFile.name);
+<<<<<<< HEAD
                     err.help.should.equal('This will be required in future. Please see http://themes.ghost.org/docs/packagejson');
+=======
+                    err.help.should.equal('This will be required in future. Please see http://docs.ghost.org/themes/');
+>>>>>>> c16a58cf6836bab5075e5869d1f7b9a656ac18c9
 
                     done();
                 })
@@ -83,7 +97,11 @@ describe('Package Utils', function () {
                 .catch(function (err) {
                     err.message.should.equal('"name" or "version" is missing from theme package.json file.');
                     err.context.should.equal(tmpFile.name);
+<<<<<<< HEAD
                     err.help.should.equal('This will be required in future. Please see http://themes.ghost.org/docs/packagejson');
+=======
+                    err.help.should.equal('This will be required in future. Please see http://docs.ghost.org/themes/');
+>>>>>>> c16a58cf6836bab5075e5869d1f7b9a656ac18c9
 
                     done();
                 })
@@ -106,7 +124,11 @@ describe('Package Utils', function () {
                 .catch(function (err) {
                     err.message.should.equal('Theme package.json file is malformed');
                     err.context.should.equal(tmpFile.name);
+<<<<<<< HEAD
                     err.help.should.equal('This will be required in future. Please see http://themes.ghost.org/docs/packagejson');
+=======
+                    err.help.should.equal('This will be required in future. Please see http://docs.ghost.org/themes/');
+>>>>>>> c16a58cf6836bab5075e5869d1f7b9a656ac18c9
 
                     done();
                 })
@@ -384,6 +406,7 @@ describe('Package Utils', function () {
         });
     });
 
+<<<<<<< HEAD
     describe('Themes', function () {
         // NOTE: this probably shouldn't be here, but it makes more sense than in
         // The server utils spec.js and has its own home in 1.0/alpha already.
@@ -509,6 +532,8 @@ describe('Package Utils', function () {
         });
     });
 
+=======
+>>>>>>> c16a58cf6836bab5075e5869d1f7b9a656ac18c9
     describe('Filter Packages', function () {
         // @TODO: introduce some non-theme package examples
         var casper = {
@@ -551,10 +576,18 @@ describe('Package Utils', function () {
             result.should.be.an.Array().with.lengthOf(1);
             package1 = result[0];
 
+<<<<<<< HEAD
             package1.should.be.an.Object().with.properties('name', 'package');
             Object.keys(package1).should.be.an.Array().with.lengthOf(2);
             package1.name.should.eql('casper');
             package1.package.should.be.an.Object().with.properties('name', 'version');
+=======
+            package1.should.be.an.Object().with.properties('name', 'package', 'active');
+            Object.keys(package1).should.be.an.Array().with.lengthOf(3);
+            package1.name.should.eql('casper');
+            package1.package.should.be.an.Object().with.properties('name', 'version');
+            package1.active.should.be.false();
+>>>>>>> c16a58cf6836bab5075e5869d1f7b9a656ac18c9
         });
 
         it('should filter packages and handle a single active package string', function () {
@@ -571,11 +604,19 @@ describe('Package Utils', function () {
             package1.package.should.be.an.Object().with.properties('name', 'version');
             package1.active.should.be.true();
 
+<<<<<<< HEAD
             package2.should.be.an.Object().with.properties('name', 'package');
             Object.keys(package2).should.be.an.Array().with.lengthOf(2);
             package2.name.should.eql('simple');
             package2.package.should.be.an.Object().with.properties('name', 'version');
             should.not.exist(package2.active);
+=======
+            package2.should.be.an.Object().with.properties('name', 'package', 'active');
+            Object.keys(package2).should.be.an.Array().with.lengthOf(3);
+            package2.name.should.eql('simple');
+            package2.package.should.be.an.Object().with.properties('name', 'version');
+            package2.active.should.be.false();
+>>>>>>> c16a58cf6836bab5075e5869d1f7b9a656ac18c9
         });
 
         it('should filter packages and handle an array of active packages', function () {
@@ -613,11 +654,19 @@ describe('Package Utils', function () {
             package1.package.should.be.an.Object().with.properties('name', 'version');
             package1.active.should.be.true();
 
+<<<<<<< HEAD
             package2.should.be.an.Object().with.properties('name', 'package');
             Object.keys(package2).should.be.an.Array().with.lengthOf(2);
             package2.name.should.eql('missing');
             package2.package.should.be.false();
             should.not.exist(package2.active);
+=======
+            package2.should.be.an.Object().with.properties('name', 'package', 'active');
+            Object.keys(package2).should.be.an.Array().with.lengthOf(3);
+            package2.name.should.eql('missing');
+            package2.package.should.be.false();
+            package2.active.should.be.false();
+>>>>>>> c16a58cf6836bab5075e5869d1f7b9a656ac18c9
         });
 
         it('filters out things which are not packages', function () {

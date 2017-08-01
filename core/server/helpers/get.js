@@ -1,23 +1,26 @@
 // # Get Helper
 // Usage: `{{#get "posts" limit="5"}}`, `{{#get "tags" limit="all"}}`
 // Fetches data from the API
-var _               = require('lodash'),
-    hbs             = require('express-hbs'),
-    Promise         = require('bluebird'),
-    errors          = require('../errors'),
-    api             = require('../api'),
-    jsonpath        = require('jsonpath'),
-    labs            = require('../utils/labs'),
-    i18n            = require('../i18n'),
+var proxy = require('./proxy'),
+    _ = require('lodash'),
+    Promise = require('bluebird'),
+    jsonpath = require('jsonpath'),
+
+    logging = proxy.logging,
+    i18n = proxy.i18n,
+    createFrame = proxy.hbs.handlebars.createFrame,
+
+    api = proxy.api,
+    labs = proxy.labs,
     resources,
     pathAliases,
     get;
 
 // Endpoints that the helper is able to access
-resources =  ['posts', 'tags', 'users'];
+resources = ['posts', 'tags', 'users'];
 
 // Short forms of paths which we should understand
-pathAliases     = {
+pathAliases = {
     'post.tags': 'post.tags[*].slug',
     'post.author': 'post.author.slug'
 };
@@ -95,19 +98,19 @@ get = function get(resource, options) {
     options.data = options.data || {};
 
     var self = this,
-        data = hbs.handlebars.createFrame(options.data),
+        data = createFrame(options.data),
         apiOptions = options.hash,
         apiMethod;
 
     if (!options.fn) {
         data.error = i18n.t('warnings.helpers.get.mustBeCalledAsBlock');
-        errors.logWarn(data.error);
+        logging.warn(data.error);
         return Promise.resolve();
     }
 
     if (!_.includes(resources, resource)) {
         data.error = i18n.t('warnings.helpers.get.invalidResource');
-        errors.logWarn(data.error);
+        logging.warn(data.error);
         return Promise.resolve(options.inverse(self, {data: data}));
     }
 
@@ -118,11 +121,6 @@ get = function get(resource, options) {
 
     return apiMethod(apiOptions).then(function success(result) {
         var blockParams;
-
-        // If no result is found, call the inverse or `{{else}}` function
-        if (_.isEmpty(result[resource])) {
-            return options.inverse(self, {data: data});
-        }
 
         // block params allows the theme developer to name the data using something like
         // `{{#get "posts" as |result pageInfo|}}`
@@ -143,8 +141,9 @@ get = function get(resource, options) {
     });
 };
 
-module.exports = function getWithLabs(resource, options) {
+module.exports = function getLabsWrapper() {
     var self = this,
+<<<<<<< HEAD
         errorMessages = [
             i18n.t('warnings.helpers.get.helperNotAvailable'),
             i18n.t('warnings.helpers.get.apiMustBeEnabled'),
@@ -160,4 +159,17 @@ module.exports = function getWithLabs(resource, options) {
             return '<script>console.error("' + errorMessages.join(' ') + '");</script>';
         });
     }
+=======
+        args = arguments;
+
+    return labs.enabledHelper({
+        flagKey: 'publicAPI',
+        flagName: 'Public API',
+        helperName: 'get',
+        helpUrl: 'https://help.ghost.org/hc/en-us/articles/115000301672-Public-API-Beta',
+        async: true
+    }, function executeHelper() {
+        return get.apply(self, args);
+    });
+>>>>>>> c16a58cf6836bab5075e5869d1f7b9a656ac18c9
 };

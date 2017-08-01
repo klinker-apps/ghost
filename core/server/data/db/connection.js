@@ -8,6 +8,7 @@ var knex = require('knex'),
 // - then this file is cached and you have no chance to connect to the db anymore
 // - bring dynamic into this file (db.connect())
 function configure(dbConfig) {
+<<<<<<< HEAD
     var client = dbConfig.client,
         pg;
 
@@ -39,6 +40,9 @@ function configure(dbConfig) {
             }
         }, dbConfig.pool);
     }
+=======
+    var client = dbConfig.client;
+>>>>>>> c16a58cf6836bab5075e5869d1f7b9a656ac18c9
 
     if (client === 'sqlite3') {
         dbConfig.useNullAsDefault = dbConfig.useNullAsDefault || false;
@@ -46,13 +50,14 @@ function configure(dbConfig) {
 
     if (client === 'mysql') {
         dbConfig.connection.timezone = 'UTC';
+        dbConfig.connection.charset = 'utf8mb4';
     }
 
     return dbConfig;
 }
 
-if (!knexInstance && config.database && config.database.client) {
-    knexInstance = knex(configure(config.database));
+if (!knexInstance && config.get('database') && config.get('database').client) {
+    knexInstance = knex(configure(config.get('database')));
 }
 
 module.exports = knexInstance;

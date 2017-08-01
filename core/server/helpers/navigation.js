@@ -2,16 +2,14 @@
 // `{{navigation}}`
 // Outputs navigation menu of static urls
 
-var _               = require('lodash'),
-    hbs             = require('express-hbs'),
-    i18n            = require('../i18n'),
+var proxy = require('./proxy'),
+    _ = require('lodash'),
+    SafeString = proxy.SafeString,
+    i18n = proxy.i18n,
+    errors = proxy.errors,
+    templates = proxy.templates;
 
-    errors          = require('../errors'),
-    template        = require('./template'),
-    navigation;
-
-navigation = function (options) {
-    /*jshint unused:false*/
+module.exports = function navigation(options) {
     var navigationData = options.data.blog.navigation,
         currentUrl = options.data.root.relativeUrl,
         self = this,
@@ -19,13 +17,17 @@ navigation = function (options) {
         data;
 
     if (!_.isObject(navigationData) || _.isFunction(navigationData)) {
-        return errors.logAndThrowError(i18n.t('warnings.helpers.navigation.invalidData'));
+        throw new errors.IncorrectUsageError({
+            message: i18n.t('warnings.helpers.navigation.invalidData')
+        });
     }
 
     if (navigationData.filter(function (e) {
         return (_.isUndefined(e.label) || _.isUndefined(e.url));
     }).length > 0) {
-        return errors.logAndThrowError(i18n.t('warnings.helpers.navigation.valuesMustBeDefined'));
+        throw new errors.IncorrectUsageError({
+            message: i18n.t('warnings.helpers.navigation.valuesMustBeDefined')
+        });
     }
 
     // check for non-null string values
@@ -33,7 +35,9 @@ navigation = function (options) {
         return ((!_.isNull(e.label) && !_.isString(e.label)) ||
             (!_.isNull(e.url) && !_.isString(e.url)));
     }).length > 0) {
-        return errors.logAndThrowError(i18n.t('warnings.helpers.navigation.valuesMustBeString'));
+        throw new errors.IncorrectUsageError({
+            message: i18n.t('warnings.helpers.navigation.valuesMustBeString')
+        });
     }
 
     function _slugify(label) {
@@ -53,7 +57,7 @@ navigation = function (options) {
 
     // {{navigation}} should no-op if no data passed in
     if (navigationData.length === 0) {
-        return new hbs.SafeString('');
+        return new SafeString('');
     }
 
     output = navigationData.map(function (e) {
@@ -68,7 +72,6 @@ navigation = function (options) {
 
     data = _.merge({}, {navigation: output});
 
-    return template.execute('navigation', data, options);
+    return templates.execute('navigation', data, options);
 };
 
-module.exports = navigation;

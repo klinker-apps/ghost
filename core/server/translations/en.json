@@ -34,9 +34,9 @@
     "errors": {
         "apps": {
             "failedToParseActiveAppsSettings": {
-                "error": "Failed to parse activeApps setting value: {message}",
+                "error": "Failed to parse active_apps setting value: {message}",
                 "context": "Your apps will not be loaded.",
-                "help": "Check your settings table for typos in the activeApps value. It should look like: [\"app-1\", \"app2\"] (double quotes required)."
+                "help": "Check your settings table for typos in the active_apps value. It should look like: [\"app-1\", \"app2\"] (double quotes required)."
             },
             "appWillNotBeLoaded": {
                 "error": "The app will not be loaded",
@@ -106,7 +106,9 @@
                 }
             },
             "themehandler": {
-                "missingTheme": "The currently active theme \"{theme}\" is missing."
+                "missingTheme": "The currently active theme \"{theme}\" is missing.",
+                "invalidTheme": "The currently active theme \"{theme}\" is invalid.",
+                "themeHasErrors": "The currently active theme \"{theme}\" has errors, but will still work."
             }
         },
         "utils": {
@@ -116,17 +118,8 @@
                 "willBeRequired": "This will be required in future. Please see {url}",
                 "themeFileIsMalformed": "Theme package.json file is malformed"
             },
-            "validatethemes": {
-                "themeWithNoPackage": {
-                    "message": "Found a theme with no package.json file",
-                    "context": "Theme name: {name}",
-                    "help": "This will be required in future. Please see {url}"
-                },
-                "malformedPackage": {
-                    "message": "Found a malformed package.json",
-                    "context": "Theme name: {name}",
-                    "help": "Valid package.json will be required in future. Please see {url}"
-                }
+            "blogIcon": {
+                "error": "Could not fetch icon dimensions."
             }
         },
         "config": {
@@ -176,7 +169,8 @@
         "general": {
             "maintenance": "Ghost is currently undergoing maintenance, please wait a moment then retry.",
             "moreInfo": "\nMore info: {info}",
-            "requiredOnFuture": "This will be required in future. Please see {link}"
+            "requiredOnFuture": "This will be required in future. Please see {link}",
+            "internalError": "Something went wrong."
         },
         "httpServer": {
             "addressInUse": {
@@ -244,14 +238,14 @@
                 },
                 "incorrectPassword": "Your password is incorrect.",
                 "accountLocked": "Your account is locked. Please reset your password to log in again by clicking the \"Forgotten password?\" link!",
+                "accountSuspended": "Your account was suspended.",
                 "newPasswordsDoNotMatch": "Your new passwords do not match",
                 "passwordRequiredForOperation": "Password is required for this operation",
-                "invalidTokenStructure": "Invalid token structure",
-                "invalidTokenExpiration": "Invalid token expiration",
                 "expiredToken": "Expired token",
                 "tokenLocked": "Token locked",
                 "invalidToken": "Invalid token",
                 "userNotFound": "User not found",
+                "ownerNotFound": "Owner not found",
                 "onlyOwnerCanTransferOwnerRole": "Only owners are able to transfer the owner role.",
                 "onlyAdmCanBeAssignedOwnerRole": "Only administrators can be assigned the owner role."
             },
@@ -290,10 +284,16 @@
             }
         },
         "api": {
+            "common": {
+                "invalidTokenStructure": "Invalid token structure"
+            },
             "authentication": {
                 "setupUnableToRun": "Database missing fixture data. Please reset database and try again.",
                 "setupMustBeCompleted": "Setup must be completed before making this request.",
                 "noEmailProvided": "No email provided.",
+                "noTokenProvided": "No token provided.",
+                "noPasswordProvided": "No password provided.",
+                "noNameProvided": "No name provided.",
                 "invalidEmailReceived": "The server did not receive a valid email",
                 "setupAlreadyCompleted": "Setup has already been completed.",
                 "unableToSendWelcomeEmail": "Unable to send welcome email, your blog will continue to function.",
@@ -337,6 +337,10 @@
             "settings": {
                 "problemFindingSetting": "Problem finding setting: {key}",
                 "accessCoreSettingFromExtReq": "Attempted to access core setting from external request",
+                "activeThemeSetViaAPI": {
+                    "error": "Attempted to change active_theme via settings API",
+                    "help": "Please activate theme via the themes API endpoints instead"
+                },
                 "invalidJsonInLabs": "Error: Invalid JSON in settings.labs",
                 "labsColumnCouldNotBeParsed": "The column with key \"labs\" could not be parsed as JSON",
                 "tryUpdatingLabs": "Please try updating a setting on the labs page, or manually editing your DB",
@@ -364,25 +368,27 @@
                 "missingFile": "Please select a theme.",
                 "invalidFile": "Please select a valid zip file.",
                 "overrideCasper": "Please rename your zip, it's not allowed to override the default casper theme.",
-                "destroyCasper": "Deleting the default casper theme is not allowed."
+                "destroyCasper": "Deleting the default casper theme is not allowed.",
+                "destroyActive": "Deleting the active theme is not allowed."
             },
             "images": {
                 "missingFile": "Please select an image.",
                 "invalidFile": "Please select a valid image."
             },
+            "icons": {
+                "missingFile": "Please select an icon.",
+                "invalidFile": "Blog icon must be a square .ico or .png file between 60px – 1,000px, under 100kb.",
+                "couldNotGetSize": "Couldn/'t get icon dimensions"
+            },
             "users": {
                 "userNotFound": "User not found.",
                 "cannotChangeOwnRole": "You cannot change your own role.",
+                "cannotChangeStatus": "You cannot change your own status.",
                 "cannotChangeOwnersRole": "Cannot change Owner's role",
                 "noPermissionToEditUser": "You do not have permission to edit this user",
-                "notAllowedToCreateOwner": "Not allowed to create an owner user.",
                 "noPermissionToAddUser": "You do not have permission to add this user",
                 "noEmailProvided": "No email provided.",
                 "userAlreadyRegistered": "User is already registered.",
-                "errorSendingEmail": {
-                    "error": "Error sending email: {message}",
-                    "help": "Please check your email settings and resend the invitation."
-                },
                 "noPermissionToDestroyUser": "You do not have permission to destroy this user.",
                 "noPermissionToChangeUsersPwd": "You do not have permission to change the password for this user"
             },
@@ -390,6 +396,19 @@
                 "noPermissionToCall": "You do not have permission to {method} {docName}",
                 "noRootKeyProvided": "No root key ('{docName}') provided.",
                 "invalidIdProvided": "Invalid id provided."
+            },
+            "invites": {
+                "inviteNotFound": "Invite not found.",
+                "inviteExpired": "Invite is expired.",
+                "emailIsRequired": "E-Mail is required.",
+                "roleIsRequired": "Role is required",
+                "roleNotFound": "Role not found",
+                "errorSendingEmail": {
+                    "error": "Error sending email: {message}",
+                    "help": "Please check your email settings and resend the invitation."
+                },
+                "notAllowedToInviteOwner": "Not allowed to invite an owner user.",
+                "notAllowedToInvite": "Not allowed to invite this role."
             }
         },
         "data": {
@@ -428,16 +447,6 @@
                     }
                 }
             },
-            "versioning": {
-                "index": {
-                    "dbVersionNotRecognized": "Database version is not recognized",
-                    "databaseNotPopulated": "Database is not populated.",
-                    "cannotMigrate": {
-                        "error": "Unable to upgrade from version 0.4.2 or earlier.",
-                        "context": "Please upgrade to 0.7.1 first."
-                    }
-                }
-            },
             "xml": {
                 "xmlrpc": {
                     "pingUpdateFailed": {
@@ -465,7 +474,8 @@
             "whilstTryingToRender": "whilst trying to render an error page for the error: ",
             "renderingErrorPage": "Rendering Error Page",
             "caughtProcessingError": "Ghost caught a processing error in the middleware layer.",
-            "pageNotFound": "Page not found"
+            "pageNotFound": "Page not found",
+            "resourceNotFound": "Resource not found"
         }
     },
     "warnings": {
@@ -475,17 +485,14 @@
         },
         "helpers": {
             "helperNotAvailable": "The \\{\\{{helperName}\\}\\} helper is not available.",
-            "apiMustBeEnabled": "The {flagName} labs flag must be enabled if you wish to use the \\{\\{{helperName}\\}\\} helper.",
+            "flagMustBeEnabled": "The {flagName} labs flag must be enabled if you wish to use the \\{\\{{helperName}\\}\\} helper.",
             "seeLink": "See {url}",
             "foreach": {
                 "iteratorNeeded": "Need to pass an iterator to #foreach"
             },
             "get": {
                 "mustBeCalledAsBlock": "Get helper must be called as a block",
-                "invalidResource": "Invalid resource given to get helper",
-                "helperNotAvailable": "The \\{\\{get\\}\\} helper is not available.",
-                "apiMustBeEnabled": "Public API access must be enabled if you wish to use the \\{\\{get\\}\\} helper.",
-                "seeLink": "See {url}"
+                "invalidResource": "Invalid resource given to get helper"
             },
             "has": {
                 "invalidAttribute": "Invalid or no attribute given to has helper"
@@ -513,6 +520,9 @@
             "plural": {
                 "valuesMustBeDefined": "All values must be defined for empty, singular and plural"
             },
+            "img_url": {
+                "attrIsRequired": "Attribute is required e.g. \\{\\{img_url feature_image\\}\\}"
+            },
             "template": {
                 "templateNotFound": "Template {name} not found."
             }
@@ -530,14 +540,14 @@
         "httpServer": {
             "cantTouchThis": "Can't touch this",
             "ghostIsRunning": "Ghost is running...",
-            "yourBlogIsAvailableOn": "\nYour blog is now available on {url}",
-            "ctrlCToShutDown": "\nCtrl+C to shut down",
+            "yourBlogIsAvailableOn": "Your blog is now available on {url}",
+            "ctrlCToShutDown": "Ctrl+C to shut down",
             "ghostIsRunningIn": "Ghost is running in {env}...",
-            "listeningOn": "\nListening on",
-            "urlConfiguredAs": "\nUrl configured as: {url}",
-            "ghostHasShutdown": "\nGhost has shut down",
-            "yourBlogIsNowOffline": "\nYour blog is now offline",
-            "ghostWasRunningFor": "\nGhost was running for",
+            "listeningOn": "Listening on: {host}:{port}",
+            "urlConfiguredAs": "Url configured as: {url}",
+            "ghostHasShutdown": "Ghost has shut down",
+            "yourBlogIsNowOffline": "Your blog is now offline",
+            "ghostWasRunningFor": "Ghost was running for",
             "ghostIsClosingConnections": "Ghost is closing connections"
         },
         "mail": {
@@ -562,7 +572,7 @@
             "validation": {
                 "index": {
                     "valueCannotBeBlank": "Value in [{tableName}.{columnKey}] cannot be blank.",
-                    "valueMustBeBoolean": "Value in [settings.key] must be one of true, false, 0 or 1.",
+                    "valueMustBeBoolean": "Value in [{tableName}.{columnKey}] must be one of true, false, 0 or 1.",
                     "valueExceedsMaxLength": "Value in [{tableName}.{columnKey}] exceeds maximum length of {maxlength} characters.",
                     "valueIsNotInteger": "Value in [{tableName}.{columnKey}] is not an integer.",
                     "themeCannotBeActivated": "The theme \"{themeName}\" cannot be activated because it is not currently installed.",

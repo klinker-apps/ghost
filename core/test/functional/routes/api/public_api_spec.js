@@ -1,25 +1,22 @@
-var testUtils     = require('../../../utils'),
-    should        = require('should'),
-    supertest     = require('supertest'),
-    _             = require('lodash'),
-
-    ghost         = require('../../../../../core'),
-
+var should = require('should'),
+    supertest = require('supertest'),
+    testUtils = require('../../../utils'),
+    _ = require('lodash'),
+    config = require('../../../../../core/server/config'),
+    ghost = testUtils.startGhost,
     request;
 
 describe('Public API', function () {
-    var publicAPIaccessSetting = {
-        settings: [
-            {key: 'labs', value: {publicAPI: true}}
-        ]
-    };
+    var ghostServer;
 
-    before(function (done) {
+    before(function () {
         // starting ghost automatically populates the db
         // TODO: prevent db init, and manage bringing up the DB with fixtures ourselves
-        ghost().then(function (ghostServer) {
-            request = supertest.agent(ghostServer.rootApp);
+        return ghost().then(function (_ghostServer) {
+            ghostServer = _ghostServer;
+            return ghostServer.start();
         }).then(function () {
+<<<<<<< HEAD
             return testUtils.doAuth(request, 'posts', 'tags', 'trusted_domains');
         }).then(function (token) {
             // enable public API
@@ -36,12 +33,19 @@ describe('Public API', function () {
                     done();
                 });
         }).catch(done);
+=======
+            request = supertest.agent(config.get('url'));
+        }).then(function () {
+            return testUtils.doAuth(request, 'posts', 'tags', 'client:trusted-domain');
+        });
+>>>>>>> c16a58cf6836bab5075e5869d1f7b9a656ac18c9
     });
 
-    after(function (done) {
-        testUtils.clearData().then(function () {
-            done();
-        }).catch(done);
+    after(function () {
+        return testUtils.clearData()
+            .then(function () {
+                return ghostServer.stop();
+            });
     });
 
     it('browse posts', function (done) {
@@ -57,6 +61,7 @@ describe('Public API', function () {
 
                 res.headers.vary.should.eql('Origin, Accept-Encoding');
                 should.exist(res.headers['access-control-allow-origin']);
+<<<<<<< HEAD
                 should.not.exist(res.headers['x-cache-invalidate']);
 
                 var jsonResponse = res.body;
@@ -86,10 +91,41 @@ describe('Public API', function () {
                 should.exist(res.headers['access-control-allow-origin']);
                 should.not.exist(res.headers['x-cache-invalidate']);
 
+=======
+                should.not.exist(res.headers['x-cache-invalidate']);
+
                 var jsonResponse = res.body;
                 should.exist(jsonResponse.posts);
                 testUtils.API.checkResponse(jsonResponse, 'posts');
-                jsonResponse.posts.should.have.length(5);
+                jsonResponse.posts.should.have.length(11);
+                testUtils.API.checkResponse(jsonResponse.posts[0], 'post');
+                testUtils.API.checkResponse(jsonResponse.meta.pagination, 'pagination');
+                _.isBoolean(jsonResponse.posts[0].featured).should.eql(true);
+                _.isBoolean(jsonResponse.posts[0].page).should.eql(true);
+                done();
+            });
+    });
+
+    it('browse posts from different origin', function (done) {
+        request.get(testUtils.API.getApiQuery('posts/?client_id=ghost-test&client_secret=not_available'))
+            .set('Origin', 'https://example.com')
+            .expect('Content-Type', /json/)
+            .expect('Cache-Control', testUtils.cacheRules.private)
+            .expect(200)
+            .end(function (err, res) {
+                if (err) {
+                    return done(err);
+                }
+
+                res.headers.vary.should.eql('Origin, Accept-Encoding');
+                should.exist(res.headers['access-control-allow-origin']);
+                should.not.exist(res.headers['x-cache-invalidate']);
+
+>>>>>>> c16a58cf6836bab5075e5869d1f7b9a656ac18c9
+                var jsonResponse = res.body;
+                should.exist(jsonResponse.posts);
+                testUtils.API.checkResponse(jsonResponse, 'posts');
+                jsonResponse.posts.should.have.length(11);
                 testUtils.API.checkResponse(jsonResponse.posts[0], 'post');
                 testUtils.API.checkResponse(jsonResponse.meta.pagination, 'pagination');
                 _.isBoolean(jsonResponse.posts[0].featured).should.eql(true);
@@ -113,7 +149,7 @@ describe('Public API', function () {
                 var jsonResponse = res.body;
                 should.exist(jsonResponse.posts);
                 testUtils.API.checkResponse(jsonResponse, 'posts');
-                jsonResponse.posts.should.have.length(5);
+                jsonResponse.posts.should.have.length(11);
                 testUtils.API.checkResponse(jsonResponse.posts[0], 'post');
                 testUtils.API.checkResponse(jsonResponse.meta.pagination, 'pagination');
                 _.isBoolean(jsonResponse.posts[0].featured).should.eql(true);
@@ -190,6 +226,7 @@ describe('Public API', function () {
     it('denies access with invalid client_secret', function (done) {
         request.get(testUtils.API.getApiQuery('posts/?client_id=ghost-admin&client_secret=invalid_secret'))
             .set('Origin', testUtils.API.getURL())
+            .set('Accept', 'application/json')
             .expect('Content-Type', /json/)
             .expect('Cache-Control', testUtils.cacheRules.private)
             .expect(401)
@@ -202,7 +239,7 @@ describe('Public API', function () {
                 var jsonResponse = res.body;
                 should.exist(jsonResponse);
                 should.exist(jsonResponse.errors);
-                testUtils.API.checkResponseValue(jsonResponse.errors[0], ['message', 'errorType']);
+                testUtils.API.checkResponseValue(jsonResponse.errors[0], ['message', 'errorType', 'context']);
                 done();
             });
     });
@@ -210,6 +247,7 @@ describe('Public API', function () {
     it('denies access with invalid client_id', function (done) {
         request.get(testUtils.API.getApiQuery('posts/?client_id=invalid-id&client_secret=not_available'))
             .set('Origin', testUtils.API.getURL())
+            .set('Accept', 'application/json')
             .expect('Content-Type', /json/)
             .expect('Cache-Control', testUtils.cacheRules.private)
             .expect(401)
@@ -222,7 +260,7 @@ describe('Public API', function () {
                 var jsonResponse = res.body;
                 should.exist(jsonResponse);
                 should.exist(jsonResponse.errors);
-                testUtils.API.checkResponseValue(jsonResponse.errors[0], ['message', 'errorType']);
+                testUtils.API.checkResponseValue(jsonResponse.errors[0], ['message', 'errorType', 'context']);
                 done();
             });
     });
@@ -230,6 +268,7 @@ describe('Public API', function () {
     it('does not send CORS headers on an invalid origin', function (done) {
         request.get(testUtils.API.getApiQuery('posts/?client_id=ghost-admin&client_secret=not_available'))
             .set('Origin', 'http://invalid-origin')
+            .set('Accept', 'application/json')
             .expect('Content-Type', /json/)
             .expect('Cache-Control', testUtils.cacheRules.private)
             .expect(200)
@@ -248,6 +287,7 @@ describe('Public API', function () {
     it('denies access to settings endpoint', function (done) {
         request.get(testUtils.API.getApiQuery('settings/?client_id=ghost-admin&client_secret=not_available'))
             .set('Origin', testUtils.API.getURL())
+            .set('Accept', 'application/json')
             .expect('Content-Type', /json/)
             .expect('Cache-Control', testUtils.cacheRules.private)
             .expect(403)
@@ -268,6 +308,7 @@ describe('Public API', function () {
     it('throws version mismatch error when request includes a version', function (done) {
         request.get(testUtils.API.getApiQuery('posts/?client_id=ghost-admin&client_secret=not_available'))
             .set('Origin', testUtils.API.getURL())
+            .set('Accept', 'application/json')
             .set('X-Ghost-Version', '0.3')
             .expect('Content-Type', /json/)
             .expect('Cache-Control', testUtils.cacheRules.private)

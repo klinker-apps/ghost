@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 // # Config
 // General entry point for all configuration data
 var path          = require('path'),
@@ -20,63 +21,30 @@ var path          = require('path'),
     defaultConfig = {};
 
 function ConfigManager(config) {
+=======
+var Nconf = require('nconf'),
+    path = require('path'),
+    _debug = require('debug'),
+    debug = _debug('ghost:config'),
+    localUtils = require('./utils'),
+    env = process.env.NODE_ENV || 'development',
+    _private = {};
+
+_private.loadNconf = function loadNconf(options) {
+    debug('config start');
+    options = options || {};
+
+    var baseConfigPath = options.baseConfigPath || __dirname,
+        customConfigPath = options.customConfigPath || process.cwd(),
+        nconf = new Nconf.Provider();
+
+>>>>>>> c16a58cf6836bab5075e5869d1f7b9a656ac18c9
     /**
-     * Our internal true representation of our current config object.
-     * @private
-     * @type {Object}
+     * no channel can override the overrides
      */
-    this._config = {};
+    nconf.file('overrides', path.join(baseConfigPath, 'overrides.json'));
 
-    // Allow other modules to be externally accessible.
-    this.urlJoin = configUrl.urlJoin;
-    this.urlFor = configUrl.urlFor;
-    this.urlPathForPost = configUrl.urlPathForPost;
-    this.apiUrl = configUrl.apiUrl;
-    this.getBaseUrl = configUrl.getBaseUrl;
-
-    // If we're given an initial config object then we can set it.
-    if (config && _.isObject(config)) {
-        this.set(config);
-    }
-}
-
-// Are we using sockets? Custom socket or the default?
-ConfigManager.prototype.getSocket = function () {
-    var socketConfig,
-        values = {
-            path: path.join(this._config.paths.contentPath, process.env.NODE_ENV + '.socket'),
-            permissions: '660'
-        };
-
-    if (this._config.server.hasOwnProperty('socket')) {
-        socketConfig = this._config.server.socket;
-
-        if (_.isString(socketConfig)) {
-            values.path = socketConfig;
-
-            return values;
-        }
-
-        if (_.isObject(socketConfig)) {
-            values.path = socketConfig.path || values.path;
-            values.permissions = socketConfig.permissions || values.permissions;
-
-            return values;
-        }
-    }
-
-    return false;
-};
-
-ConfigManager.prototype.init = function (rawConfig) {
-    var self = this;
-
-    // Cache the config.js object's environment
-    // object so we can later refer to it.
-    // Note: this is not the entirety of config.js,
-    // just the object appropriate for this NODE_ENV
-    self.set(rawConfig);
-
+<<<<<<< HEAD
     return Promise.resolve(self._config);
 };
 
@@ -381,113 +349,65 @@ ConfigManager.prototype.writeFile = function () {
             });
 
             write.on('finish', resolve);
+=======
+    /**
+     * command line arguments
+     */
+    nconf.argv();
+>>>>>>> c16a58cf6836bab5075e5869d1f7b9a656ac18c9
 
-            read.pipe(write);
-        });
+    /**
+     * env arguments
+     */
+    nconf.env({
+        separator: '__'
     });
+
+    nconf.file('custom-env', path.join(customConfigPath, 'config.' + env + '.json'));
+    nconf.file('default-env', path.join(baseConfigPath, 'env', 'config.' + env + '.json'));
+    nconf.file('defaults', path.join(baseConfigPath, 'defaults.json'));
+
+    /**
+     * transform all relative paths to absolute paths
+     * transform sqlite filename path for Ghost-CLI
+     */
+    nconf.makePathsAbsolute = localUtils.makePathsAbsolute.bind(nconf);
+    nconf.isPrivacyDisabled = localUtils.isPrivacyDisabled.bind(nconf);
+    nconf.getContentPath = localUtils.getContentPath.bind(nconf);
+    nconf.sanitizeDatabaseProperties = localUtils.sanitizeDatabaseProperties.bind(nconf);
+    nconf.doesContentPathExist = localUtils.doesContentPathExist.bind(nconf);
+
+    nconf.sanitizeDatabaseProperties();
+    nconf.makePathsAbsolute(nconf.get('paths'), 'paths');
+    nconf.makePathsAbsolute(nconf.get('database:connection'), 'database:connection');
+
+    /**
+     * Check if the URL in config has a protocol
+     */
+    nconf.checkUrlProtocol = localUtils.checkUrlProtocol.bind(nconf);
+    nconf.checkUrlProtocol();
+
+    /**
+     * Ensure that the content path exists
+     */
+    nconf.doesContentPathExist();
+
+    /**
+     * values we have to set manual
+     */
+    nconf.set('env', env);
+
+    // Wrap this in a check, because else nconf.get() is executed unnecessarily
+    // To output this, use DEBUG=ghost:*,ghost-config
+    if (_debug.enabled('ghost-config')) {
+        debug(nconf.get());
+    }
+
+    debug('config end');
+    return nconf;
 };
 
-/**
- * Read config.js file from file system using node's require
- * @param  {String} envVal Which environment we're in.
- * @return {Object}        The config object.
- */
-ConfigManager.prototype.readFile = function (envVal) {
-    return require(this._config.paths.config)[envVal];
-};
-
-/**
- * Validates the config object has everything we want and in the form we want.
- * @return {Promise.<Object>} Returns a promise that resolves to the config object.
- */
-ConfigManager.prototype.validate = function () {
-    var envVal = process.env.NODE_ENV || undefined,
-        hasHostAndPort,
-        hasSocket,
-        config,
-        parsedUrl;
-
-    try {
-        config = this.readFile(envVal);
-    }
-    catch (e) {
-        return Promise.reject(e);
-    }
-
-    // Check that our url is valid
-    if (!validator.isURL(config.url, {protocols: ['http', 'https'], require_protocol: true})) {
-        errors.logError(
-            new Error(i18n.t('errors.config.invalidUrlInConfig.description'),
-            config.url,
-            i18n.t('errors.config.invalidUrlInConfig.help')));
-
-        return Promise.reject(new Error(i18n.t('errors.config.invalidUrlInConfig.error')));
-    }
-
-    parsedUrl = url.parse(config.url || 'invalid', false, true);
-
-    if (/\/ghost(\/|$)/.test(parsedUrl.pathname)) {
-        errors.logError(
-            new Error(i18n.t('errors.config.urlCannotContainGhostSubdir.description'),
-            config.url,
-            i18n.t('errors.config.urlCannotContainGhostSubdir.help')));
-
-        return Promise.reject(new Error(i18n.t('errors.config.urlCannotContainGhostSubdir.error')));
-    }
-
-    // Check that we have database values
-    if (!config.database || !config.database.client) {
-        errors.logError(
-            new Error(i18n.t('errors.config.dbConfigInvalid.description')),
-            JSON.stringify(config.database),
-            i18n.t('errors.config.dbConfigInvalid.help'));
-
-        return Promise.reject(new Error(i18n.t('errors.config.dbConfigInvalid.error')));
-    }
-
-    hasHostAndPort = config.server && !!config.server.host && !!config.server.port;
-    hasSocket = config.server && !!config.server.socket;
-
-    // Check for valid server host and port values
-    if (!config.server || !(hasHostAndPort || hasSocket)) {
-        errors.logError(
-            new Error(i18n.t('errors.config.invalidServerValues.description')),
-            JSON.stringify(config.server),
-            i18n.t('errors.config.invalidServerValues.help'));
-
-        return Promise.reject(new Error(i18n.t('errors.config.invalidServerValues.error')));
-    }
-
-    return Promise.resolve(config);
-};
-
-/**
- * Helper method for checking the state of a particular privacy flag
- * @param {String} privacyFlag The flag to check
- * @returns {boolean}
- */
-ConfigManager.prototype.isPrivacyDisabled = function (privacyFlag) {
-    if (!this.privacy) {
-        return false;
-    }
-
-    if (this.privacy.useTinfoil === true) {
-        return true;
-    }
-
-    return this.privacy[privacyFlag] === false;
-};
-
-/**
- * Check if any of the currently set config items are deprecated, and issues a warning.
- */
-ConfigManager.prototype.checkDeprecated = function () {
-    var self = this;
-    _.each(this.deprecatedItems, function (property) {
-        self.displayDeprecated(self._config, property.split('.'), []);
-    });
-};
-
+<<<<<<< HEAD
 ConfigManager.prototype.displayDeprecated = function (item, properties, address) {
     var self = this,
         property = properties.shift(),
@@ -513,3 +433,7 @@ if (testingEnvs.indexOf(process.env.NODE_ENV) > -1) {
 }
 
 module.exports = new ConfigManager(defaultConfig);
+=======
+module.exports = _private.loadNconf();
+module.exports.loadNconf = _private.loadNconf;
+>>>>>>> c16a58cf6836bab5075e5869d1f7b9a656ac18c9

@@ -1,18 +1,26 @@
-var testUtils         = require('../../utils'),
-    should            = require('should'),
-    rewire            = require('rewire'),
+var should = require('should'),
+    testUtils = require('../../utils'),
+    rewire = require('rewire'),
+    configUtils = require('../../utils/configUtils'),
 
     // Stuff we are testing
-    ConfigurationAPI  = rewire('../../../server/api/configuration');
+    ConfigurationAPI = rewire('../../../server/api/configuration');
 
 describe('Configuration API', function () {
     // Keep the DB clean
     before(testUtils.teardown);
-    afterEach(testUtils.teardown);
+    beforeEach(testUtils.setup('clients'));
+    afterEach(function () {
+        configUtils.restore();
+        return testUtils.teardown();
+    });
 
     should.exist(ConfigurationAPI);
 
     it('can read basic config and get all expected properties', function (done) {
+        configUtils.set('auth:type', 'ghost');
+        configUtils.set('auth:url', 'https://auth.ghost.com');
+
         ConfigurationAPI.read().then(function (response) {
             var props;
 
@@ -21,17 +29,29 @@ describe('Configuration API', function () {
             response.configuration.should.be.an.Array().with.lengthOf(1);
             props = response.configuration[0];
 
-            // Check the structure
-            props.should.have.property('blogUrl').which.is.an.Object().with.properties('type', 'value');
-            props.should.have.property('blogTitle').which.is.an.Object().with.properties('type', 'value');
-            props.should.have.property('routeKeywords').which.is.an.Object().with.properties('type', 'value');
-            props.should.have.property('fileStorage').which.is.an.Object().with.properties('type', 'value');
-            props.should.have.property('useGravatar').which.is.an.Object().with.properties('type', 'value');
-            props.should.have.property('publicAPI').which.is.an.Object().with.properties('type', 'value');
+            props.blogUrl.should.eql('http://127.0.0.1:2369/');
+            props.routeKeywords.should.eql({
+                tag: 'tag',
+                author: 'author',
+                page: 'page',
+                preview: 'p',
+                primaryTagFallback: 'all',
+                private: 'private',
+                subscribe: 'subscribe',
+                amp: 'amp'
+            });
 
-            // Check a few values
-            props.blogUrl.should.have.property('value', 'http://127.0.0.1:2369');
-            props.fileStorage.should.have.property('value', true);
+            props.useGravatar.should.eql(false);
+            props.publicAPI.should.eql(false);
+            props.clientId.should.eql('ghost-admin');
+            props.clientSecret.should.eql('not_available');
+            props.ghostAuthUrl.should.eql('https://auth.ghost.com');
+
+            // value not available, because settings API was not called yet
+            props.hasOwnProperty('blogTitle').should.eql(true);
+
+            // uuid
+            props.hasOwnProperty('ghostAuthId').should.eql(true);
 
             done();
         }).catch(done);

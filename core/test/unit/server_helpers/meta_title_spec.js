@@ -1,28 +1,23 @@
-var should         = require('should'),
-    hbs            = require('express-hbs'),
-    utils          = require('./utils'),
-    configUtils    = require('../../utils/configUtils'),
+var should = require('should'),
+    sinon = require('sinon'),
+    configUtils = require('../../utils/configUtils'),
+    helpers = require('../../../server/helpers'),
+    settingsCache = require('../../../server/settings/cache'),
 
-// Stuff we are testing
-    handlebars     = hbs.handlebars,
-    helpers        = require('../../../server/helpers');
+    sandbox = sinon.sandbox.create();
 
 describe('{{meta_title}} helper', function () {
     before(function () {
-        utils.loadHelpers();
-        configUtils.set({
-            theme: {
+        sandbox.stub(settingsCache, 'get', function (key) {
+            return {
                 title: 'Ghost'
-            }
+            }[key];
         });
     });
 
     after(function () {
         configUtils.restore();
-    });
-
-    it('has loaded meta_title helper', function () {
-        should.exist(handlebars.helpers.meta_title);
+        sandbox.restore();
     });
 
     it('returns correct title for homepage', function () {
@@ -42,7 +37,7 @@ describe('{{meta_title}} helper', function () {
         );
 
         should.exist(rendered);
-        String(rendered).should.equal('Ghost - Page 2');
+        String(rendered).should.equal('Ghost (Page 2)');
     });
 
     it('returns correct title for a post', function () {
@@ -93,7 +88,7 @@ describe('{{meta_title}} helper', function () {
         );
 
         should.exist(rendered);
-        String(rendered).should.equal('Rasper Red - Page 2 - Ghost');
+        String(rendered).should.equal('Rasper Red - Ghost (Page 2)');
     });
 
     it('uses tag meta_title to override default response on tag page', function () {
@@ -133,7 +128,7 @@ describe('{{meta_title}} helper', function () {
         );
 
         should.exist(rendered);
-        String(rendered).should.equal('Donald Duck - Page 2 - Ghost');
+        String(rendered).should.equal('Donald Duck - Ghost (Page 2)');
     });
 
     it('returns correctly escaped title of a post', function () {

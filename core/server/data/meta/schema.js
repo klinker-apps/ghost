@@ -1,7 +1,6 @@
 var config = require('../../config'),
-    hbs = require('express-hbs'),
+    escapeExpression = require('../../themes/engine').escapeExpression,
     socialUrls = require('../../utils/social-urls'),
-    escapeExpression = hbs.handlebars.Utils.escapeExpression,
     _ = require('lodash');
 
 function schemaImageObject(metaDataVal) {
@@ -65,8 +64,9 @@ function trimSameAs(data, context) {
 }
 
 function getPostSchema(metaData, data) {
-    var description = metaData.metaDescription ? escapeExpression(metaData.metaDescription) :
-        (metaData.excerpt ? escapeExpression(metaData.excerpt) : null),
+    // CASE: metaData.excerpt for post context is populated by either the custom excerpt, the meta description,
+    // or the automated excerpt of 50 words. It is empty for any other context.
+    var description = metaData.excerpt ? escapeExpression(metaData.excerpt) : null,
         schema;
 
     schema = {
@@ -83,8 +83,8 @@ function getPostSchema(metaData, data) {
             image: schemaImageObject(metaData.authorImage),
             url: metaData.authorUrl,
             sameAs: trimSameAs(data, 'post'),
-            description: data.post.author.bio ?
-            escapeExpression(data.post.author.bio) :
+            description: data.post.author.metaDescription ?
+            escapeExpression(data.post.author.metaDescription) :
             null
         },
         headline: escapeExpression(metaData.metaTitle),

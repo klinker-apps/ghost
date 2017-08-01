@@ -6,14 +6,15 @@
 //
 // Note that the standard {{#each tags}} implementation is unaffected by this helper
 
-var hbs             = require('express-hbs'),
-    _               = require('lodash'),
-    config          = require('../config'),
-    labs            = require('../utils/labs'),
-    utils           = require('./utils'),
-    tags;
+var proxy = require('./proxy'),
+    _ = require('lodash'),
 
-tags = function (options) {
+    SafeString = proxy.SafeString,
+    templates = proxy.templates,
+    url = proxy.url,
+    visibilityUtils = proxy.visibility;
+
+module.exports = function tags(options) {
     options = options || {};
     options.hash = options.hash || {};
 
@@ -24,33 +25,18 @@ tags = function (options) {
         limit      = options.hash.limit ? parseInt(options.hash.limit, 10) : undefined,
         from       = options.hash.from ? parseInt(options.hash.from, 10) : 1,
         to         = options.hash.to ? parseInt(options.hash.to, 10) : undefined,
-        visibility = utils.parseVisibility(options),
+        visibility = visibilityUtils.parser(options),
         output     = '';
 
     function createTagList(tags) {
-        return _.reduce(tags, function (tagArray, tag) {
-            // If labs.internalTags is set && visibility is not set to all
-            // Then, if tag has a visibility property, and that visibility property is also not explicitly allowed, skip tag
-            // or if there is no visibility property, and options.hash.visibility was set, skip tag
-            if (labs.isSet('internalTags') && !_.includes(visibility, 'all')) {
-                if (
-                    (tag.visibility && !_.includes(visibility, tag.visibility) && !_.includes(visibility, 'all')) ||
-                    (!!options.hash.visibility && !_.includes(visibility, 'all') && !tag.visibility)
-                ) {
-                    // Skip this tag
-                    return tagArray;
-                }
-            }
-
-            var tagOutput = autolink ? utils.linkTemplate({
-                url: config.urlFor('tag', {tag: tag}),
+        function processTag(tag) {
+            return autolink ? templates.link({
+                url: url.urlFor('tag', {tag: tag}),
                 text: _.escape(tag.name)
             }) : _.escape(tag.name);
+        }
 
-            tagArray.push(tagOutput);
-
-            return tagArray;
-        }, []);
+        return visibilityUtils.filter(tags, visibility, !!options.hash.visibility, processTag);
     }
 
     if (this.tags && this.tags.length) {
@@ -64,7 +50,5 @@ tags = function (options) {
         output = prefix + output + suffix;
     }
 
-    return new hbs.handlebars.SafeString(output);
+    return new SafeString(output);
 };
-
-module.exports = tags;

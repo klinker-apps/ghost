@@ -3,16 +3,13 @@
 var Promise          = require('bluebird'),
     exporter         = require('../data/export'),
     importer         = require('../data/importer'),
-    backupDatabase   = require('../data/migration').backupDatabase,
+    backupDatabase   = require('../data/db/backup'),
     models           = require('../models'),
     errors           = require('../errors'),
     utils            = require('./utils'),
     pipeline         = require('../utils/pipeline'),
-    api              = {},
-    docName      = 'db',
+    docName          = 'db',
     db;
-
-api.settings         = require('./settings');
 
 /**
  * ## DB API Methods
@@ -28,8 +25,8 @@ db = {
      * @param {{context}} options
      * @returns {Promise} Ghost Export JSON format
      */
-    exportContent: function (options) {
-        var tasks = [];
+    exportContent: function exportContent(options) {
+        var tasks;
 
         options = options || {};
 
@@ -37,8 +34,8 @@ db = {
         function exportContent() {
             return exporter.doExport().then(function (exportedData) {
                 return {db: [exportedData]};
-            }).catch(function (error) {
-                return Promise.reject(new errors.InternalServerError(error.message || error));
+            }).catch(function (err) {
+                return Promise.reject(new errors.GhostError({err: err}));
             });
         }
 
@@ -57,16 +54,16 @@ db = {
      * @param {{context}} options
      * @returns {Promise} Success
      */
-    importContent: function (options) {
-        var tasks = [];
+    importContent: function importContent(options) {
+        var tasks;
         options = options || {};
 
         function importContent(options) {
             return importer.importFromFile(options)
-                .then(function () {
-                    api.settings.updateSettingsCache();
-                })
-                .return({db: []});
+                .then(function (response) {
+                    // NOTE: response can contain 2 objects if images are imported
+                    return {db: [], problems: response.length === 2 ? response[1].problems : response[0].problems};
+                });
         }
 
         tasks = [
@@ -84,7 +81,7 @@ db = {
      * @param {{context}} options
      * @returns {Promise} Success
      */
-    deleteAllContent: function (options) {
+    deleteAllContent: function deleteAllContent(options) {
         var tasks,
             queryOpts = {columns: 'id', context: {internal: true}};
 
@@ -99,8 +96,8 @@ db = {
             return Promise.each(collections, function then(Collection) {
                 return Collection.invokeThen('destroy', queryOpts);
             }).return({db: []})
-            .catch(function (error) {
-                throw new errors.InternalServerError(error.message || error);
+            .catch(function (err) {
+                throw new errors.GhostError({err: err});
             });
         }
 

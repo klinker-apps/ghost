@@ -4,8 +4,8 @@ var _               = require('lodash'),
     config          = require('../../server/config'),
     schema          = require('../../server/data/schema').tables,
     ApiRouteBase    = '/ghost/api/v0.1/',
-    host            = config.server.host,
-    port            = config.server.port,
+    host            = config.get('server').host,
+    port            = config.get('server').port,
     protocol        = 'http://',
     expectedProperties = {
         // API top level
@@ -19,10 +19,15 @@ var _               = require('lodash'),
         slugs:         ['slugs'],
         slug:          ['slug'],
         // object / model level
-        // Post API swaps author_id to author, and always returns a computed 'url' property
-        post:        _(schema.posts).keys().without('author_id').concat('author', 'url').value(),
+        // Post API
+        post:        _(schema.posts).keys()
+            // does not return all formats by default
+            .without('mobiledoc', 'amp', 'plaintext')
+            // swaps author_id to author, and always returns computed properties: url, comment_id, primary_tag
+            .without('author_id').concat('author', 'url', 'comment_id', 'primary_tag')
+            .value(),
         // User API always removes the password field
-        user:        _(schema.users).keys().without('password').value(),
+        user:        _(schema.users).keys().without('password').without('ghost_auth_access_token').value(),
         // Tag API swaps parent_id to parent
         tag:         _(schema.tags).keys().without('parent_id').concat('parent').value(),
         setting:     _.keys(schema.settings),
@@ -31,7 +36,9 @@ var _               = require('lodash'),
         role:        _.keys(schema.roles),
         permission:  _.keys(schema.permissions),
         notification: ['type', 'message', 'status', 'id', 'dismissible', 'location'],
-        theme:        ['uuid', 'name', 'version', 'active']
+        theme:        ['name', 'package', 'active'],
+        themes:       ['themes'],
+        invites:      _(schema.invites).keys().without('token').value()
     };
 
 function getApiQuery(route) {
@@ -76,8 +83,10 @@ function checkResponseValue(jsonResponse, expectedProperties) {
     providedProperties.length.should.eql(expectedProperties.length);
 }
 
-function checkResponse(jsonResponse, objectType, additionalProperties, missingProperties) {
+function checkResponse(jsonResponse, objectType, additionalProperties, missingProperties, onlyProperties) {
     var checkProperties = expectedProperties[objectType];
+
+    checkProperties = onlyProperties ? onlyProperties : checkProperties;
     checkProperties = additionalProperties ? checkProperties.concat(additionalProperties) : checkProperties;
     checkProperties = missingProperties ? _.xor(checkProperties, missingProperties) : checkProperties;
 

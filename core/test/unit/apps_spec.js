@@ -1,27 +1,27 @@
-var path         = require('path'),
+var should = require('should'),
+    sinon = require('sinon'),
+    path = require('path'),
     EventEmitter = require('events').EventEmitter,
-    should       = require('should'),
-    sinon        = require('sinon'),
-    _            = require('lodash'),
-    Promise      = require('bluebird'),
-    helpers      = require('../../server/helpers'),
-    filters      = require('../../server/filters'),
-    i18n         = require('../../server/i18n'),
+    _ = require('lodash'),
+    Promise = require('bluebird'),
+    helpers = require('../../server/helpers/register'),
+    filters = require('../../server/filters'),
+    i18n = require('../../server/i18n'),
 
     // Stuff we are testing
-    AppProxy        = require('../../server/apps/proxy'),
-    AppSandbox      = require('../../server/apps/sandbox'),
+    AppProxy = require('../../server/apps/proxy'),
+    AppSandbox = require('../../server/apps/sandbox'),
     AppDependencies = require('../../server/apps/dependencies'),
-    AppPermissions  = require('../../server/apps/permissions');
+    AppPermissions = require('../../server/apps/permissions'),
+
+    sandbox = sinon.sandbox.create();
+
 i18n.init();
 
 describe('Apps', function () {
-    var sandbox,
-        fakeApi;
+    var fakeApi;
 
     beforeEach(function () {
-        sandbox = sinon.sandbox.create();
-
         fakeApi = {
             posts: {
                 browse: sandbox.stub(),
@@ -218,7 +218,7 @@ describe('Apps', function () {
         });
 
         it('allows helper registration with permission', function () {
-            var registerSpy = sandbox.spy(helpers, 'registerThemeHelper'),
+            var registerSpy = sandbox.stub(helpers, 'registerThemeHelper'),
                 appProxy = new AppProxy({
                     name: 'TestApp',
                     permissions: {
@@ -234,7 +234,7 @@ describe('Apps', function () {
         });
 
         it('does not allow helper registration without permission', function () {
-            var registerSpy = sandbox.spy(helpers, 'registerThemeHelper'),
+            var registerSpy = sandbox.stub(helpers, 'registerThemeHelper'),
                 appProxy = new AppProxy({
                     name: 'TestApp',
                     permissions: {
@@ -255,7 +255,7 @@ describe('Apps', function () {
         });
 
         it('does allow INTERNAL app to register helper without permission', function () {
-            var registerSpy = sandbox.spy(helpers, 'registerThemeHelper'),
+            var registerSpy = sandbox.stub(helpers, 'registerThemeHelper'),
                 appProxy = new AppProxy({
                     name: 'TestApp',
                     permissions: {},

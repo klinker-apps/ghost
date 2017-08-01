@@ -1,7 +1,6 @@
-
-var utils = require('../../../server/utils'),
-    should = require('should'),
-    path = require ('path'),
+var should = require('should'),
+    utils = require('../../../server/utils'),
+    path = require('path'),
     csvPath = path.join(__dirname, '../../utils/fixtures/csv/');
 
 describe('read csv', function () {
@@ -13,8 +12,8 @@ describe('read csv', function () {
             should.exist(result);
             result.length.should.eql(3);
             result[0].email.should.eql('email');
-            result[1].email.should.eql('hannah@ghost.org');
-            result[2].email.should.eql('kate@ghost.org');
+            result[1].email.should.eql('jbloggs@example.com');
+            result[2].email.should.eql('test@example.com');
             done();
         }).catch(done);
     });
@@ -26,8 +25,8 @@ describe('read csv', function () {
         }).then(function (result) {
             should.exist(result);
             result.length.should.eql(2);
-            result[0].email.should.eql('hannah@ghost.org');
-            result[1].email.should.eql('kate@ghost.org');
+            result[0].email.should.eql('jbloggs@example.com');
+            result[1].email.should.eql('test@example.com');
             should.not.exist(result[0].id);
 
             done();
@@ -44,9 +43,9 @@ describe('read csv', function () {
         }).then(function (result) {
             should.exist(result);
             result.length.should.eql(2);
-            result[0].email.should.eql('hannah@ghost.org');
+            result[0].email.should.eql('jbloggs@example.com');
             result[0].id.should.eql('1');
-            result[1].email.should.eql('kate@ghost.org');
+            result[1].email.should.eql('test@example.com');
             result[1].id.should.eql('2');
             done();
         }).catch(done);

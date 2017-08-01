@@ -1,11 +1,11 @@
-var testUtils   = require('../../utils'),
-    should      = require('should'),
-    Promise     = require('bluebird'),
-    _           = require('lodash'),
+var should = require('should'),
+    testUtils = require('../../utils'),
+    Promise = require('bluebird'),
+    _ = require('lodash'),
     // Stuff we are testing
-    context     = testUtils.context,
+    context = testUtils.context,
 
-    TagAPI      = require('../../../server/api/tags');
+    TagAPI = require('../../../server/api/tags');
 
 // there are some random generated tags in test database
 // which can't be sorted easily using _.sortBy()
@@ -27,7 +27,7 @@ describe('Tags API', function () {
         var newTag;
 
         beforeEach(function () {
-            newTag = _.clone(testUtils.DataGenerator.forKnex.createTag(testUtils.DataGenerator.Content.tags[0]));
+            newTag = _.clone(_.omit(testUtils.DataGenerator.forKnex.createTag(testUtils.DataGenerator.Content.tags[0]), 'id'));
             Promise.resolve(newTag);
         });
 
@@ -68,15 +68,15 @@ describe('Tags API', function () {
                 .then(function () {
                     done(new Error('Adding a tag with an invalid name is not rejected.'));
                 }).catch(function (errors) {
-                    errors.should.have.enumerable(0).with.property('errorType', 'ValidationError');
-                    done();
-                }).catch(done);
+                errors.should.have.enumerable(0).with.property('errorType', 'ValidationError');
+                done();
+            }).catch(done);
         });
     });
 
     describe('Edit', function () {
         var newTagName = 'tagNameUpdated',
-        firstTag = 1;
+            firstTag = testUtils.DataGenerator.Content.tags[0].id;
 
         it('can edit a tag (admin)', function (done) {
             TagAPI.edit({tags: [{name: newTagName}]}, _.extend({}, context.admin, {id: firstTag}))
@@ -100,11 +100,11 @@ describe('Tags API', function () {
 
         it('No-auth CANNOT edit tag', function (done) {
             TagAPI.edit({tags: [{name: newTagName}]}, _.extend({}, {id: firstTag}))
-            .then(function () {
-                done(new Error('Add tag is not denied without authentication.'));
-            }, function () {
-                done();
-            }).catch(done);
+                .then(function () {
+                    done(new Error('Add tag is not denied without authentication.'));
+                }, function () {
+                    done();
+                }).catch(done);
         });
 
         it('rejects invalid names with ValidationError', function (done) {
@@ -114,14 +114,15 @@ describe('Tags API', function () {
                 .then(function () {
                     done(new Error('Adding a tag with an invalid name is not rejected.'));
                 }).catch(function (errors) {
-                    errors.should.have.enumerable(0).with.property('errorType', 'ValidationError');
-                    done();
-                }).catch(done);
+                errors.should.have.enumerable(0).with.property('errorType', 'ValidationError');
+                done();
+            }).catch(done);
         });
     });
 
     describe('Destroy', function () {
-        var firstTag = 1;
+        var firstTag = testUtils.DataGenerator.Content.tags[0].id;
+
         it('can destroy Tag', function (done) {
             TagAPI.destroy(_.extend({}, testUtils.context.admin, {id: firstTag}))
                 .then(function (results) {
@@ -313,10 +314,6 @@ describe('Tags API', function () {
     });
 
     describe('Read', function () {
-        function extractFirstTag(tags) {
-            return _.filter(tags, {id: 1})[0];
-        }
-
         it('returns count.posts with include count.posts', function (done) {
             TagAPI.read({context: {user: 1}, include: 'count.posts', slug: 'kitchen-sink'}).then(function (results) {
                 should.exist(results);
@@ -337,7 +334,7 @@ describe('Tags API', function () {
                 should.exist(results.tags);
                 results.tags.length.should.be.above(0);
 
-                var firstTag = extractFirstTag(results.tags);
+                var firstTag = _.find(results.tags, {id: testUtils.DataGenerator.Content.tags[0].id});
 
                 return TagAPI.read({context: {user: 1}, slug: firstTag.slug});
             }).then(function (found) {

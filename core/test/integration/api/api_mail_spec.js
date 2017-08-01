@@ -1,9 +1,8 @@
-var testUtils       = require('../../utils'),
-    should          = require('should'),
-    config          = require('../../../server/config'),
-    i18n            = require('../../../../core/server/i18n'),
-
-    // test data
+var should = require('should'),
+    testUtils = require('../../utils'),
+    _ = require('lodash'),
+    configUtils = require('../../utils/configUtils'),
+    i18n = require('../../../../core/server/i18n'),
     mailData = {
         mail: [{
             message: {
@@ -14,6 +13,7 @@ var testUtils       = require('../../utils'),
             options: {}
         }]
     };
+
 i18n.init();
 
 describe('Mail API', function () {
@@ -21,8 +21,22 @@ describe('Mail API', function () {
     afterEach(testUtils.teardown);
     beforeEach(testUtils.setup('perms:mail', 'perms:init'));
 
+    beforeEach(function () {
+        _.each(require.cache, function (value, key) {
+            if (key.match(/server\/api\/mail/)) {
+                delete require.cache[key];
+            }
+        });
+
+        require('../../../server/api/mail');
+    });
+
+    afterEach(function () {
+        configUtils.restore();
+    });
+
     it('returns a success', function (done) {
-        config.set({mail: {transport: 'stub'}});
+        configUtils.set({mail: {transport: 'stub'}});
 
         var MailAPI = require('../../../server/api/mail');
 
@@ -37,14 +51,14 @@ describe('Mail API', function () {
     });
 
     it('returns a boo boo', function (done) {
-        config.set({mail: {transport: 'stub', options: {error: 'Stub made a boo boo :('}}});
+        configUtils.set({mail: {transport: 'stub', options: {error: 'Stub made a boo boo :('}}});
 
         var MailAPI = require('../../../server/api/mail');
 
         MailAPI.send(mailData, testUtils.context.internal).then(function () {
             done(new Error('Stub did not error'));
         }).catch(function (error) {
-            error.message.should.startWith('Error: Stub made a boo boo :(');
+            error.stack.should.match(/Error: Stub made a boo boo/);
             error.errorType.should.eql('EmailError');
             done();
         }).catch(done);

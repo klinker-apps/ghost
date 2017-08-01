@@ -1,8 +1,8 @@
-var _       = require('lodash'),
+var _ = require('lodash'),
     Promise = require('bluebird'),
-    i18n    = require('../../i18n'),
-    db      = require('../db'),
-    schema  = require('./schema'),
+    i18n = require('../../i18n'),
+    db = require('../db'),
+    schema = require('./schema'),
     clients = require('./clients');
 
 function addTableColumn(tableName, table, columnName) {
@@ -12,8 +12,12 @@ function addTableColumn(tableName, table, columnName) {
     // creation distinguishes between text with fieldtype, string with maxlength and all others
     if (columnSpec.type === 'text' && columnSpec.hasOwnProperty('fieldtype')) {
         column = table[columnSpec.type](columnName, columnSpec.fieldtype);
-    } else if (columnSpec.type === 'string' && columnSpec.hasOwnProperty('maxlength')) {
-        column = table[columnSpec.type](columnName, columnSpec.maxlength);
+    } else if (columnSpec.type === 'string') {
+        if (columnSpec.hasOwnProperty('maxlength')) {
+            column = table[columnSpec.type](columnName, columnSpec.maxlength);
+        } else {
+            column = table[columnSpec.type](columnName, 191);
+        }
     } else {
         column = table[columnSpec.type](columnName);
     }
@@ -21,7 +25,7 @@ function addTableColumn(tableName, table, columnName) {
     if (columnSpec.hasOwnProperty('nullable') && columnSpec.nullable === true) {
         column.nullable();
     } else {
-        column.notNullable();
+        column.nullable(false);
     }
     if (columnSpec.hasOwnProperty('primary') && columnSpec.primary === true) {
         column.primary();
@@ -65,13 +69,24 @@ function dropUnique(table, column, transaction) {
     });
 }
 
+/**
+ * https://github.com/tgriesser/knex/issues/1303
+ * createTableIfNotExists can throw error if indexes are already in place
+ */
 function createTable(table, transaction) {
-    return (transaction || db.knex).schema.createTableIfNotExists(table, function (t) {
-        var columnKeys = _.keys(schema[table]);
-        _.each(columnKeys, function (column) {
-            return addTableColumn(table, t, column);
+    return (transaction || db.knex).schema.hasTable(table)
+        .then(function (exists) {
+            if (exists) {
+                return;
+            }
+
+            return (transaction || db.knex).schema.createTable(table, function (t) {
+                var columnKeys = _.keys(schema[table]);
+                _.each(columnKeys, function (column) {
+                    return addTableColumn(table, t, column);
+                });
+            });
         });
-    });
 }
 
 function deleteTable(table, transaction) {
@@ -82,7 +97,7 @@ function getTables(transaction) {
     var client = (transaction || db.knex).client.config.client;
 
     if (_.includes(_.keys(clients), client)) {
-        return clients[client].getTables();
+        return clients[client].getTables(transaction);
     }
 
     return Promise.reject(i18n.t('notices.data.utils.index.noSupportForDatabase', {client: client}));

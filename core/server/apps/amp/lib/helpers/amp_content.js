@@ -6,19 +6,21 @@
 //
 // Converts normal HTML into AMP HTML with Amperize module and uses a cache to return it from
 // there if available. The cacheId is a combination of `updated_at` and the `slug`.
-var hbs                  = require('express-hbs'),
-    Promise              = require('bluebird'),
-    Amperize             = require('amperize'),
-    moment               = require('moment'),
-    sanitizeHtml         = require('sanitize-html'),
-    config               = require('../../../../config'),
-    errors               = require('../../../../errors'),
-    makeAbsoluteUrl      = require('../../../../utils/make-absolute-urls'),
-    cheerio              = require('cheerio'),
-    amperize             = new Amperize(),
-    amperizeCache        = {},
-    allowedAMPTags       = [],
+var Promise = require('bluebird'),
+    moment = require('moment'),
+
+    // (less) dirty requires
+    proxy = require('../../../../helpers/proxy'),
+    SafeString = proxy.SafeString,
+    logging = proxy.logging,
+    i18n = proxy.i18n,
+    errors = proxy.errors,
+    makeAbsoluteUrl = require('../../../../utils/make-absolute-urls'),
+    utils = require('../../../../utils'),
+    amperizeCache = {},
+    allowedAMPTags = [],
     allowedAMPAttributes = {},
+    amperize,
     cleanHTML,
     ampHTML;
 
@@ -118,17 +120,24 @@ function getAmperizeHTML(html, post) {
         return;
     }
 
+    var Amperize = require('amperize');
+    amperize = amperize || new Amperize();
+
     // make relative URLs abolute
-    html = makeAbsoluteUrl(html, config.url, post.url).html();
+    html = makeAbsoluteUrl(html, utils.url.urlFor('home', true), post.url).html();
 
     if (!amperizeCache[post.id] || moment(new Date(amperizeCache[post.id].updated_at)).diff(new Date(post.updated_at)) < 0) {
         return new Promise(function (resolve) {
             amperize.parse(html, function (err, res) {
                 if (err) {
                     if (err.src) {
-                        errors.logError(err.message, 'AMP HTML couldn\'t get parsed: ' + err.src);
+                        logging.error(new errors.GhostError({
+                            err: err,
+                            context: 'AMP HTML couldn\'t get parsed: ' + err.src,
+                            help: i18n.t('errors.apps.appWillNotBeLoaded.help')
+                        }));
                     } else {
-                        errors.logError(err);
+                        logging.error(new errors.GhostError({err: err}));
                     }
 
                     // save it in cache to prevent multiple calls to Amperize until
@@ -148,7 +157,9 @@ function getAmperizeHTML(html, post) {
 }
 
 function ampContent() {
-    var amperizeHTML = {
+    var sanitizeHtml = require('sanitize-html'),
+        cheerio = require('cheerio'),
+        amperizeHTML = {
             amperize: getAmperizeHTML(this.html, this)
         };
 
@@ -182,7 +193,7 @@ function ampContent() {
             selfClosing: ['source', 'track']
         });
 
-        return new hbs.handlebars.SafeString(cleanHTML);
+        return new SafeString(cleanHTML);
     });
 }
 

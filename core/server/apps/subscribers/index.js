@@ -1,57 +1,13 @@
-var _          = require('lodash'),
-    path       = require('path'),
-    hbs        = require('express-hbs'),
-    router     = require('./lib/router'),
+var router     = require('./lib/router'),
+    registerHelpers = require('./lib/helpers'),
 
     // Dirty requires
-    config     = require('../../config'),
-    errors     = require('../../errors'),
-    i18n       = require('../../i18n'),
-    labs       = require('../../utils/labs'),
-    template   = require('../../helpers/template'),
-    utils      = require('../../helpers/utils'),
-
-    params = ['error', 'success', 'email'],
-
-    /**
-     * This helper script sets the referrer and current location if not existent.
-     *
-     * document.querySelector['.location']['value'] = document.querySelector('.location')['value'] || window.location.href;
-     */
-    subscribeScript =
-        '<script type="text/javascript">' +
-            '(function(g,h,o,s,t){' +
-                'h[o](\'.location\')[s]=h[o](\'.location\')[s] || g.location.href;' +
-                'h[o](\'.referrer\')[s]=h[o](\'.referrer\')[s] || h.referrer;' +
-            '})(window,document,\'querySelector\',\'value\');' +
-        '</script>';
-
-function makeHidden(name, extras) {
-    return utils.inputTemplate({
-        type: 'hidden',
-        name: name,
-        className: name,
-        extras: extras
-    });
-}
-
-function subscribeFormHelper(options) {
-    var root = options.data.root,
-        data = _.merge({}, options.hash, _.pick(root, params), {
-            action: path.join('/', config.paths.subdir, config.routeKeywords.subscribe, '/'),
-            script: new hbs.handlebars.SafeString(subscribeScript),
-            hidden: new hbs.handlebars.SafeString(
-                makeHidden('confirm') +
-                makeHidden('location', root.subscribed_url ? 'value=' + root.subscribed_url : '') +
-                makeHidden('referrer', root.subscribed_referrer ? 'value=' + root.subscribed_referrer : '')
-            )
-        });
-
-    return template.execute('subscribe_form', data, options);
-}
+    config = require('../../config'),
+    labs = require('../../utils/labs');
 
 module.exports = {
     activate: function activate(ghost) {
+<<<<<<< HEAD
         var errorMessages = [
             i18n.t('warnings.helpers.helperNotAvailable', {helperName: 'subscribe_form'}),
             i18n.t('warnings.helpers.apiMustBeEnabled', {helperName: 'subscribe_form', flagName: 'subscribers'}),
@@ -67,10 +23,13 @@ module.exports = {
             errors.logError.apply(this, errorMessages);
             return new hbs.handlebars.SafeString('<script>console.error("' + errorMessages.join(' ') + '");</script>');
         });
+=======
+        registerHelpers(ghost);
+>>>>>>> c16a58cf6836bab5075e5869d1f7b9a656ac18c9
     },
 
     setupRoutes: function setupRoutes(blogRouter) {
-        blogRouter.use('/' + config.routeKeywords.subscribe + '/', function labsEnabledRouter(req, res, next) {
+        blogRouter.use('/' + config.get('routeKeywords').subscribe + '/', function labsEnabledRouter(req, res, next) {
             if (labs.isSet('subscribers') === true) {
                 return router.apply(this, arguments);
             }

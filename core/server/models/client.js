@@ -1,7 +1,14 @@
+<<<<<<< HEAD
 var ghostBookshelf = require('./base'),
     crypto         = require('crypto'),
     uuid           = require('uuid'),
 
+=======
+var crypto         = require('crypto'),
+    uuid           = require('uuid'),
+    ghostBookshelf = require('./base'),
+    config         = require('../config'),
+>>>>>>> c16a58cf6836bab5075e5869d1f7b9a656ac18c9
     Client,
     Clients;
 
@@ -10,7 +17,8 @@ Client = ghostBookshelf.Model.extend({
     tableName: 'clients',
 
     defaults: function defaults() {
-        var env = process.env.NODE_ENV,
+        // @TODO: we cannot delete this ugly check here, because ALL routing tests rely on a static client secret
+        var env = config.get('env'),
             secret = env.indexOf('testing') !== 0 ? crypto.randomBytes(6).toString('hex') : 'not_available';
 
         return {

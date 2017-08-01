@@ -1,18 +1,21 @@
-var testUtils     = require('../../../utils'),
-    supertest     = require('supertest'),
-    should        = require('should'),
-    ghost         = require('../../../../../core'),
-
+var should = require('should'),
+    supertest = require('supertest'),
+    testUtils = require('../../../utils'),
+    config = require('../../../../../core/server/config'),
+    ghost = testUtils.startGhost,
     request;
 
 describe('Notifications API', function () {
-    var accesstoken = '';
+    var accesstoken = '', ghostServer;
 
     before(function (done) {
         // starting ghost automatically populates the db
         // TODO: prevent db init, and manage bringing up the DB with fixtures ourselves
-        ghost().then(function (ghostServer) {
-            request = supertest.agent(ghostServer.rootApp);
+        ghost().then(function (_ghostServer) {
+            ghostServer = _ghostServer;
+            return ghostServer.start();
+        }).then(function () {
+            request = supertest.agent(config.get('url'));
         }).then(function () {
             return testUtils.doAuth(request);
         }).then(function (token) {
@@ -21,10 +24,11 @@ describe('Notifications API', function () {
         }).catch(done);
     });
 
-    after(function (done) {
-        testUtils.clearData().then(function () {
-            done();
-        }).catch(done);
+    after(function () {
+        return testUtils.clearData()
+            .then(function () {
+                return ghostServer.stop();
+            });
     });
 
     describe('Add', function () {

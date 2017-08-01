@@ -1,10 +1,11 @@
-var should          = require('should'),
-    Promise         = require('bluebird'),
-
-    // Stuff we are testing
-    mail            = require('../../../server/mail'),
-    configUtils     = require('../../utils/configUtils'),
-    i18n            = require('../../../server/i18n'),
+var should = require('should'),
+    sinon = require('sinon'),
+    Promise = require('bluebird'),
+    mail = require('../../../server/mail'),
+    settingsCache = require('../../../server/settings/cache'),
+    configUtils = require('../../utils/configUtils'),
+    i18n = require('../../../server/i18n'),
+    sandbox = sinon.sandbox.create(),
     mailer,
 
     // Mock SMTP config
@@ -40,8 +41,8 @@ i18n.init();
 describe('Mail: Ghostmailer', function () {
     afterEach(function () {
         mailer = null;
-
         configUtils.restore();
+        sandbox.restore();
     });
 
     it('should attach mail provider to ghost instance', function () {
@@ -177,71 +178,74 @@ describe('Mail: Ghostmailer', function () {
         });
 
         it('should fall back to [blog.title] <ghost@[blog.url]>', function () {
+            sandbox.stub(settingsCache, 'get').returns('Test');
+
             // Standard domain
-            configUtils.set({url: 'http://default.com', mail: {from: null}, theme: {title: 'Test'}});
+            configUtils.set({url: 'http://default.com', mail: {from: null}});
 
             mailer = new mail.GhostMailer();
 
             mailer.from().should.equal('"Test" <ghost@default.com>');
 
             // Trailing slash
-            configUtils.set({url: 'http://default.com/', mail: {from: null}, theme: {title: 'Test'}});
+            configUtils.set({url: 'http://default.com/', mail: {from: null}});
+
             mailer.from().should.equal('"Test" <ghost@default.com>');
 
             // Strip Port
-            configUtils.set({url: 'http://default.com:2368/', mail: {from: null}, theme: {title: 'Test'}});
+            configUtils.set({url: 'http://default.com:2368/', mail: {from: null}});
             mailer.from().should.equal('"Test" <ghost@default.com>');
 
+<<<<<<< HEAD
             // Escape title
             configUtils.set({url: 'http://default.com:2368/', mail: {from: null}, theme: {title: 'Test"'}});
+=======
+            settingsCache.get.restore();
+            sandbox.stub(settingsCache, 'get').returns('Test"');
+
+            // Escape title
+            configUtils.set({url: 'http://default.com:2368/', mail: {from: null}});
+>>>>>>> c16a58cf6836bab5075e5869d1f7b9a656ac18c9
             mailer.from().should.equal('"Test\\"" <ghost@default.com>');
         });
 
-        it('should use mail.from if both from and fromaddress are present', function () {
+        it('should use mail.from', function () {
             // Standard domain
-            configUtils.set({mail: {from: '"bar" <from@default.com>', fromaddress: '"Qux" <fa@default.com>'}});
+            configUtils.set({mail: {from: '"bar" <from@default.com>'}});
 
             mailer = new mail.GhostMailer();
 
             mailer.from().should.equal('"bar" <from@default.com>');
         });
 
-        it('should attach blog title if from or fromaddress are only email addresses', function () {
-            // from and fromaddress are both set
-            configUtils.set({mail: {from: 'from@default.com', fromaddress: 'fa@default.com'}, theme: {title: 'Test'}});
+        it('should attach blog title', function () {
+            sandbox.stub(settingsCache, 'get').returns('Test');
+
+            configUtils.set({mail: {from: 'from@default.com'}});
 
             mailer = new mail.GhostMailer();
 
             mailer.from().should.equal('"Test" <from@default.com>');
 
             // only from set
-            configUtils.set({mail: {from: 'from@default.com', fromaddress: null}, theme: {title: 'Test'}});
+            configUtils.set({mail: {from: 'from@default.com'}});
             mailer.from().should.equal('"Test" <from@default.com>');
-
-            // only fromaddress set
-            configUtils.set({mail: {from: null, fromaddress: 'fa@default.com'}, theme: {title: 'Test'}});
-            mailer.from().should.equal('"Test" <fa@default.com>');
         });
 
         it('should ignore theme title if from address is Title <email@address.com> format', function () {
-            // from and fromaddress are both set
-            configUtils.set({mail: {from: '"R2D2" <from@default.com>', fromaddress: '"C3PO" <fa@default.com>'}, theme: {title: 'Test'}});
+            configUtils.set({mail: {from: '"R2D2" <from@default.com>'}});
 
             mailer = new mail.GhostMailer();
 
             mailer.from().should.equal('"R2D2" <from@default.com>');
 
             // only from set
-            configUtils.set({mail: {from: '"R2D2" <from@default.com>', fromaddress: null}, theme: {title: 'Test'}});
+            configUtils.set({mail: {from: '"R2D2" <from@default.com>'}});
             mailer.from().should.equal('"R2D2" <from@default.com>');
-
-            // only fromaddress set
-            configUtils.set({mail: {from: null, fromaddress: '"C3PO" <fa@default.com>'}, theme: {title: 'Test'}});
-            mailer.from().should.equal('"C3PO" <fa@default.com>');
         });
 
         it('should use default title if not theme title is provided', function () {
-            configUtils.set({url: 'http://default.com:2368/', mail: {from: null}, theme: {title: null}});
+            configUtils.set({url: 'http://default.com:2368/', mail: {from: null}});
 
             mailer = new mail.GhostMailer();
 

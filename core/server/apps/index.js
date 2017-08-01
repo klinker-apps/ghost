@@ -1,6 +1,7 @@
 
 var _           = require('lodash'),
     Promise     = require('bluebird'),
+    logging     = require('../logging'),
     errors      = require('../errors'),
     api         = require('../api'),
     loader      = require('./loader'),
@@ -10,7 +11,7 @@ var _           = require('lodash'),
     availableApps = {};
 
 function getInstalledApps() {
-    return api.settings.read({context: {internal: true}, key: 'installedApps'}).then(function (response) {
+    return api.settings.read({context: {internal: true}, key: 'installed_apps'}).then(function (response) {
         var installed = response.settings[0];
 
         installed.value = installed.value || '[]';
@@ -21,15 +22,15 @@ function getInstalledApps() {
             return Promise.reject(e);
         }
 
-        return installed.concat(config.internalApps);
+        return installed.concat(config.get('apps:internal'));
     });
 }
 
 function saveInstalledApps(installedApps) {
     return getInstalledApps().then(function (currentInstalledApps) {
-        var updatedAppsInstalled = _.difference(_.uniq(installedApps.concat(currentInstalledApps)), config.internalApps);
+        var updatedAppsInstalled = _.difference(_.uniq(installedApps.concat(currentInstalledApps)), config.get('apps:internal'));
 
-        return api.settings.edit({settings: [{key: 'installedApps', value: updatedAppsInstalled}]}, {context: {internal: true}});
+        return api.settings.edit({settings: [{key: 'installed_apps', value: updatedAppsInstalled}]}, {context: {internal: true}});
     });
 }
 
@@ -39,19 +40,19 @@ module.exports = {
 
         try {
             // We have to parse the value because it's a string
-            api.settings.read({context: {internal: true}, key: 'activeApps'}).then(function (response) {
+            api.settings.read({context: {internal: true}, key: 'active_apps'}).then(function (response) {
                 var aApps = response.settings[0];
 
                 appsToLoad = JSON.parse(aApps.value) || [];
 
-                appsToLoad = appsToLoad.concat(config.internalApps);
+                appsToLoad = appsToLoad.concat(config.get('apps:internal'));
             });
-        } catch (e) {
-            errors.logError(
-                i18n.t('errors.apps.failedToParseActiveAppsSettings.error', {message: e.message}),
-                i18n.t('errors.apps.failedToParseActiveAppsSettings.context'),
-                i18n.t('errors.apps.failedToParseActiveAppsSettings.help')
-            );
+        } catch (err) {
+            logging.error(new errors.GhostError({
+                err: err,
+                context: i18n.t('errors.apps.failedToParseActiveAppsSettings.context'),
+                help: i18n.t('errors.apps.failedToParseActiveAppsSettings.help')
+            }));
 
             return Promise.resolve();
         }
@@ -88,11 +89,11 @@ module.exports = {
                 // Extend the loadedApps onto the available apps
                 _.extend(availableApps, loadedApps);
             }).catch(function (err) {
-                errors.logError(
-                    err.message || err,
-                    i18n.t('errors.apps.appWillNotBeLoaded.error'),
-                    i18n.t('errors.apps.appWillNotBeLoaded.help')
-                );
+                logging.error(new errors.GhostError({
+                    err: err,
+                    context: i18n.t('errors.apps.appWillNotBeLoaded.error'),
+                    help: i18n.t('errors.apps.appWillNotBeLoaded.help')
+                }));
             });
         });
     },

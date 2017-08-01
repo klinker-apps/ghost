@@ -10,7 +10,6 @@ b-cov
 !core/test/utils/fixtures/**/*.csv
 
 pids
-logs
 results
 
 npm-debug.log
@@ -47,7 +46,15 @@ Session.vim
 /core/server/data/export/exported*
 /content/tmp/*
 /content/data/*
+/content/logs/*
 /content/apps/**/*
+<<<<<<< HEAD
+=======
+/content/themes/**/*
+/content/images/**/*
+/content/adapters/storage/**/*
+/content/adapters/scheduling/**/*
+>>>>>>> c16a58cf6836bab5075e5869d1f7b9a656ac18c9
 !/content/themes/casper/**
 !/README.md
 
@@ -58,10 +65,17 @@ CHANGELOG.md
 /core/test/functional/*.png
 /core/test/coverage
 
+<<<<<<< HEAD
+=======
+# ignore all custom json files for config
+config.*.json
+
+>>>>>>> c16a58cf6836bab5075e5869d1f7b9a656ac18c9
 # Built asset files
 /core/built
-/core/server/views/default.hbs
-/core/shared/ghost-url.min.js
+/core/server/admin/views/*
+/core/server/public/ghost-sdk.min.js
+/core/server/public/ghost.min.css
 
 # Coverage reports
 coverage.html

@@ -1,16 +1,28 @@
+<<<<<<< HEAD
 /*jshint unused:false*/
 var should = require('should'),
+=======
+var should = require('should'), // jshint ignore:line
+    sinon = require('sinon'),
+>>>>>>> c16a58cf6836bab5075e5869d1f7b9a656ac18c9
     Promise = require('bluebird'),
     moment = require('moment'),
-    sinon = require('sinon'),
     rewire = require('rewire'),
     _ = require('lodash'),
     config = require('../../../../server/config'),
+<<<<<<< HEAD
     testUtils = require(config.paths.corePath + '/test/utils'),
     events = require(config.paths.corePath + '/server/events'),
     errors = require(config.paths.corePath + '/server/errors'),
     models = require(config.paths.corePath + '/server/models'),
     sequence = require(config.paths.corePath + '/server/utils/sequence'),
+=======
+    events = require(config.get('paths').corePath + '/server/events'),
+    models = require(config.get('paths').corePath + '/server/models'),
+    testUtils = require(config.get('paths').corePath + '/test/utils'),
+    logging = require(config.get('paths').corePath + '/server/logging'),
+    sequence = require(config.get('paths').corePath + '/server/utils/sequence'),
+>>>>>>> c16a58cf6836bab5075e5869d1f7b9a656ac18c9
     sandbox = sinon.sandbox.create();
 
 describe('Models: listeners', function () {
@@ -25,14 +37,18 @@ describe('Models: listeners', function () {
         };
 
     before(testUtils.teardown);
-    beforeEach(testUtils.setup());
+    beforeEach(testUtils.setup('owner', 'user-token:0'));
 
     beforeEach(function () {
         sandbox.stub(events, 'on', function (eventName, callback) {
             eventsToRemember[eventName] = callback;
         });
 
+<<<<<<< HEAD
         listeners = rewire(config.paths.corePath + '/server/models/base/listeners');
+=======
+        listeners = rewire(config.get('paths').corePath + '/server/models/base/listeners');
+>>>>>>> c16a58cf6836bab5075e5869d1f7b9a656ac18c9
     });
 
     afterEach(function (done) {
@@ -79,7 +95,11 @@ describe('Models: listeners', function () {
                 });
             });
 
+<<<<<<< HEAD
             it('activeTimezone changes from London to Los Angeles', function (done) {
+=======
+            it('active_timezone changes from London to Los Angeles', function (done) {
+>>>>>>> c16a58cf6836bab5075e5869d1f7b9a656ac18c9
                 var timeout;
 
                 /**
@@ -103,7 +123,11 @@ describe('Models: listeners', function () {
                 scope.newTimezone = 'America/Los_Angeles';
                 scope.oldTimezone = 'Europe/London';
 
+<<<<<<< HEAD
                 eventsToRemember['settings.activeTimezone.edited']({
+=======
+                eventsToRemember['settings.active_timezone.edited']({
+>>>>>>> c16a58cf6836bab5075e5869d1f7b9a656ac18c9
                     attributes: {value: scope.newTimezone},
                     _updatedAttributes: {value: scope.oldTimezone}
                 });
@@ -138,7 +162,11 @@ describe('Models: listeners', function () {
                 })();
             });
 
+<<<<<<< HEAD
             it('activeTimezone changes from Baghdad to UTC', function (done) {
+=======
+            it('active_timezone changes from Baghdad to UTC', function (done) {
+>>>>>>> c16a58cf6836bab5075e5869d1f7b9a656ac18c9
                 var timeout;
 
                 /**
@@ -160,7 +188,64 @@ describe('Models: listeners', function () {
                 scope.oldTimezone = 'Asia/Baghdad';
                 scope.newTimezone = 'Etc/UTC';
 
-                eventsToRemember['settings.activeTimezone.edited']({
+                eventsToRemember['settings.active_timezone.edited']({
+                    attributes: {value: scope.newTimezone},
+                    _updatedAttributes: {value: scope.oldTimezone}
+                });
+
+                (function retry() {
+                    models.Post.findAll({context: {internal: true}})
+                        .then(function (results) {
+                            var post1 = _.find(results.models, function (post) {
+                                    return post.get('title') === '1';
+                                }),
+                                post2 = _.find(results.models, function (post) {
+                                    return post.get('title') === '2';
+                                }),
+                                post3 = _.find(results.models, function (post) {
+                                    return post.get('title') === '3';
+                                });
+
+                            if (results.models.length === posts.length &&
+                                post1.get('status') === 'scheduled' &&
+                                post2.get('status') === 'scheduled' &&
+                                post3.get('status') === 'scheduled' &&
+                                moment(post1.get('published_at')).diff(scope.publishedAtFutureMoment1.clone().add(scope.timezoneOffset, 'minutes')) === 0 &&
+                                moment(post2.get('published_at')).diff(scope.publishedAtFutureMoment2.clone().add(scope.timezoneOffset, 'minutes')) === 0 &&
+                                moment(post3.get('published_at')).diff(scope.publishedAtFutureMoment3.clone().add(scope.timezoneOffset, 'minutes')) === 0) {
+                                return done();
+                            }
+
+                            clearTimeout(timeout);
+                            timeout = setTimeout(retry, 500);
+                        })
+                        .catch(done);
+                })();
+            });
+
+            it('active_timezone changes from Amsterdam to Seoul', function (done) {
+                var timeout;
+
+                /**
+                 * From Amsterdam +2
+                 * To Seoul +9
+                 *
+                 * We expect -420 minutes.
+                 *
+                 * Image it's 11AM Amsterdam time. 9AM UTC.
+                 * Imagine the post is scheduled for 8PM Amsterdam time.
+                 * The database UTC string is e.g. 2017-04-18 18:00:00.
+                 * You switch the timezone to Seoul timezone.
+                 * It's 6PM in the evening in Seoul timezone.
+                 * If we don't change the database UTC string, the post is scheduled at 3AM in the evening on the next day!
+                 * The post should be still scheduled for 8PM UTC time.
+                 * So the database UTC string must be 2017-04-18 11:00:00.
+                 */
+                scope.timezoneOffset = -420;
+                scope.oldTimezone = 'Europe/Amsterdam';
+                scope.newTimezone = 'Asia/Seoul';
+
+                eventsToRemember['settings.active_timezone.edited']({
                     attributes: {value: scope.newTimezone},
                     _updatedAttributes: {value: scope.oldTimezone}
                 });
@@ -257,7 +342,11 @@ describe('Models: listeners', function () {
                     post1 = posts[0],
                     listenerHasFinished = false;
 
+<<<<<<< HEAD
                 sandbox.spy(errors, 'logError');
+=======
+                sandbox.spy(logging, 'error');
+>>>>>>> c16a58cf6836bab5075e5869d1f7b9a656ac18c9
                 sandbox.spy(models.Post, 'findAll');
 
                 // simulate a delay, so that the edit operation from the test here interrupts
@@ -282,7 +371,11 @@ describe('Models: listeners', function () {
                 scope.oldTimezone = 'Asia/Baghdad';
                 scope.newTimezone = 'Etc/UTC';
 
+<<<<<<< HEAD
                 eventsToRemember['settings.activeTimezone.edited']({
+=======
+                eventsToRemember['settings.active_timezone.edited']({
+>>>>>>> c16a58cf6836bab5075e5869d1f7b9a656ac18c9
                     attributes: {value: scope.newTimezone},
                     _updatedAttributes: {value: scope.oldTimezone}
                 });
@@ -301,11 +394,19 @@ describe('Models: listeners', function () {
 
                     // simulate a client updates the post during the listener activity
                     models.Post.edit({title: 'a new title, yes!'}, _.merge({id: post1.id}, testUtils.context.internal))
+<<<<<<< HEAD
                         .then(function (x) {
                             interval = setInterval(function () {
                                 if (listenerHasFinished) {
                                     clearInterval(interval);
                                     errors.logError.called.should.eql(false);
+=======
+                        .then(function () {
+                            interval = setInterval(function () {
+                                if (listenerHasFinished) {
+                                    clearInterval(interval);
+                                    logging.error.called.should.eql(false);
+>>>>>>> c16a58cf6836bab5075e5869d1f7b9a656ac18c9
                                     return done();
                                 }
                             }, 1000);
@@ -317,7 +418,7 @@ describe('Models: listeners', function () {
 
         describe('db has no scheduled posts', function () {
             it('no scheduled posts', function (done) {
-                eventsToRemember['settings.activeTimezone.edited']({
+                eventsToRemember['settings.active_timezone.edited']({
                     attributes: {value: scope.newTimezone},
                     _updatedAttributes: {value: scope.oldTimezone}
                 });
@@ -329,6 +430,39 @@ describe('Models: listeners', function () {
                     })
                     .catch(done);
             });
+        });
+    });
+
+    describe('on user is deactived', function () {
+        it('ensure tokens get deleted', function (done) {
+            var userId = testUtils.DataGenerator.Content.users[0].id,
+                timeout,
+                retries = 0;
+
+            (function retry() {
+                Promise.props({
+                    accesstokens: models.Accesstoken.findAll({context: {internal: true}, id: userId}),
+                    refreshtokens: models.Refreshtoken.findAll({context: {internal: true}, id: userId})
+                }).then(function (result) {
+                    if (retries === 0) {
+                        // trigger event after first check how many tokens the user has
+                        eventsToRemember['user.deactivated']({
+                            id: userId
+                        });
+
+                        result.accesstokens.length.should.eql(1);
+                        result.refreshtokens.length.should.eql(1);
+                    }
+
+                    if (!result.accesstokens.length && !result.refreshtokens.length) {
+                        return done();
+                    }
+
+                    retries = retries + 1;
+                    clearTimeout(timeout);
+                    timeout = setTimeout(retry, 500);
+                }).catch(done);
+            })();
         });
     });
 });

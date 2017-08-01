@@ -1,11 +1,8 @@
-var testUtils = require('../../utils'),
-    should    = require('should'),
-    _         = require('lodash'),
-
-    // Stuff we are testing
-    dbAPI          = require('../../../server/api/db'),
-    ModelTag       = require('../../../server/models/tag'),
-    ModelPost      = require('../../../server/models/post');
+var should = require('should'),
+    testUtils = require('../../utils'),
+    _ = require('lodash'),
+    dbAPI = require('../../../server/api/db'),
+    models = require('../../../server/models');
 
 describe('DB API', function () {
     // Keep the DB clean
@@ -21,14 +18,19 @@ describe('DB API', function () {
             result.db.should.be.instanceof(Array);
             result.db.should.be.empty();
         }).then(function () {
-            return ModelTag.Tag.findAll(testUtils.context.owner).then(function (results) {
+            return models.Tag.findAll(testUtils.context.owner).then(function (results) {
                 should.exist(results);
                 results.length.should.equal(0);
             });
         }).then(function () {
-            return ModelPost.Post.findAll(testUtils.context.owner).then(function (results) {
+            return models.Post.findAll(testUtils.context.owner).then(function (results) {
                 should.exist(results);
                 results.length.should.equal(0);
+            });
+        }).then(function () {
+            return models.Subscriber.findAll(testUtils.context.owner).then(function (results) {
+                should.exist(results);
+                results.length.should.equal(1);
             });
         });
     });
@@ -39,12 +41,12 @@ describe('DB API', function () {
             result.db.should.be.instanceof(Array);
             result.db.should.be.empty();
         }).then(function () {
-            return ModelTag.Tag.findAll(testUtils.context.admin).then(function (results) {
+            return models.Tag.findAll(testUtils.context.admin).then(function (results) {
                 should.exist(results);
                 results.length.should.equal(0);
             });
         }).then(function () {
-            return ModelPost.Post.findAll(testUtils.context.admin).then(function (results) {
+            return models.Post.findAll(testUtils.context.admin).then(function (results) {
                 should.exist(results);
                 results.length.should.equal(0);
             });

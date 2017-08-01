@@ -1,12 +1,12 @@
-var getCoverImage = require('../../../server/data/meta/cover_image'),
-    should = require('should');
+var should = require('should'),
+    getCoverImage = require('../../../server/data/meta/cover_image');
 
 describe('getCoverImage', function () {
     it('should return absolute cover image url for home', function () {
         var coverImageUrl = getCoverImage({
             context: ['home'],
             home: {
-                cover: '/content/images/my-test-image.jpg'
+                cover_image: '/content/images/my-test-image.jpg'
             }
         });
         coverImageUrl.should.not.equal('/content/images/my-test-image.jpg');
@@ -17,7 +17,7 @@ describe('getCoverImage', function () {
         var coverImageUrl = getCoverImage({
             context: ['author'],
             author: {
-                cover: '/content/images/my-test-image.jpg'
+                cover_image: '/content/images/my-test-image.jpg'
             }
         });
         coverImageUrl.should.not.equal('/content/images/my-test-image.jpg');
@@ -28,7 +28,7 @@ describe('getCoverImage', function () {
         var coverImageUrl = getCoverImage({
             context: ['post'],
             post: {
-                image: '/content/images/my-test-image.jpg'
+                feature_image: '/content/images/my-test-image.jpg'
             }
         });
         coverImageUrl.should.not.equal('/content/images/my-test-image.jpg');
@@ -39,7 +39,7 @@ describe('getCoverImage', function () {
         var coverImageUrl = getCoverImage({
             context: ['amp', 'post'],
             post: {
-                image: '/content/images/my-test-image.jpg'
+                feature_image: '/content/images/my-test-image.jpg'
             }
         });
         coverImageUrl.should.not.equal('/content/images/my-test-image.jpg');

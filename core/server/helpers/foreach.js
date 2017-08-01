@@ -2,38 +2,23 @@
 // Usage: `{{#foreach data}}{{/foreach}}`
 //
 // Block helper designed for looping through posts
-var hbs             = require('express-hbs'),
-    _               = require('lodash'),
-    errors          = require('../errors'),
-    i18n            = require('../i18n'),
-    labs            = require('../utils/labs'),
-    utils           = require('./utils'),
-
-    hbsUtils        = hbs.handlebars.Utils,
-    foreach;
+var proxy = require('./proxy'),
+    _ = require('lodash'),
+    logging = proxy.logging,
+    i18n = proxy.i18n,
+    visibilityUtils = proxy.visibility,
+    hbsUtils = proxy.hbs.Utils,
+    createFrame = proxy.hbs.handlebars.createFrame;
 
 function filterItemsByVisibility(items, options) {
-    var visibility = utils.parseVisibility(options);
+    var visibility = visibilityUtils.parser(options);
 
-    if (!labs.isSet('internalTags') || _.includes(visibility, 'all')) {
-        return items;
-    }
-
-    function visibilityFilter(item) {
-        // If the item doesn't have a visibility property && options.hash.visibility wasn't set
-        // We return the item, else we need to be sure that this item has the property
-        if (!item.visibility && !options.hash.visibility || _.includes(visibility, item.visibility)) {
-            return item;
-        }
-    }
-
-    // We don't want to change the structure of what is returned
-    return _.isArray(items) ? _.filter(items, visibilityFilter) : _.pickBy(items, visibilityFilter);
+    return visibilityUtils.filter(items, visibility, !!options.hash.visibility);
 }
 
-foreach = function (items, options) {
+module.exports = function foreach(items, options) {
     if (!options) {
-        errors.logWarn(i18n.t('warnings.helpers.foreach.iteratorNeeded'));
+        logging.warn(i18n.t('warnings.helpers.foreach.iteratorNeeded'));
     }
 
     if (hbsUtils.isFunction(items)) {
@@ -66,7 +51,7 @@ foreach = function (items, options) {
     }
 
     if (options.data) {
-        data = hbs.handlebars.createFrame(options.data);
+        data = createFrame(options.data);
     }
 
     function execIteration(field, index, last) {
@@ -86,9 +71,9 @@ foreach = function (items, options) {
         }
 
         output = output + fn(items[field], {
-            data: data,
-            blockParams: hbsUtils.blockParams([items[field], field], [contextPath + field, null])
-        });
+                data: data,
+                blockParams: hbsUtils.blockParams([items[field], field], [contextPath + field, null])
+            });
     }
 
     function iterateCollection(context) {
@@ -122,5 +107,3 @@ foreach = function (items, options) {
 
     return output;
 };
-
-module.exports = foreach;

@@ -1,13 +1,21 @@
 var should = require('should'),
+    sinon = require('sinon'),
     Promise = require('bluebird'),
     rewire = require('rewire'),
     nock = require('nock'),
+<<<<<<< HEAD
     sinon = require('sinon'),
     config = require('../../../server/config'),
     configUtils = require('../../utils/configUtils'),
+=======
+    configUtils = require('../../utils/configUtils'),
+    utils = require('../../../server/utils'),
+>>>>>>> c16a58cf6836bab5075e5869d1f7b9a656ac18c9
 
     // Stuff we are testing
-    imageSize = rewire('../../../server/utils/image-size-from-url');
+    imageSize = rewire('../../../server/utils/image-size-from-url'),
+
+    sandbox = sinon.sandbox.create();
 
 describe('Image Size', function () {
     var sizeOfStub,
@@ -15,11 +23,15 @@ describe('Image Size', function () {
         requestMock;
 
     beforeEach(function () {
-        sizeOfStub = sinon.stub();
+        sizeOfStub = sandbox.stub();
     });
 
     afterEach(function () {
+<<<<<<< HEAD
         sinon.restore();
+=======
+        sandbox.restore();
+>>>>>>> c16a58cf6836bab5075e5869d1f7b9a656ac18c9
         configUtils.restore();
     });
 
@@ -30,11 +42,11 @@ describe('Image Size', function () {
     it('should return image dimensions with http request', function (done) {
         var url = 'http://img.stockfresh.com/files/f/feedough/x/11/1540353_20925115.jpg',
             expectedImageObject =
-                {
-                    height: 50,
-                    url: 'http://img.stockfresh.com/files/f/feedough/x/11/1540353_20925115.jpg',
-                    width: 50
-                };
+            {
+                height: 50,
+                url: 'http://img.stockfresh.com/files/f/feedough/x/11/1540353_20925115.jpg',
+                width: 50
+            };
 
         requestMock = nock('http://img.stockfresh.com')
             .get('/files/f/feedough/x/11/1540353_20925115.jpg')
@@ -59,11 +71,11 @@ describe('Image Size', function () {
     it('should return image dimensions with https request', function (done) {
         var url = 'https://static.wixstatic.com/media/355241_d31358572a2542c5a44738ddcb59e7ea.jpg_256',
             expectedImageObject =
-                {
-                    height: 256,
-                    url: 'https://static.wixstatic.com/media/355241_d31358572a2542c5a44738ddcb59e7ea.jpg_256',
-                    width: 256
-                };
+            {
+                height: 256,
+                url: 'https://static.wixstatic.com/media/355241_d31358572a2542c5a44738ddcb59e7ea.jpg_256',
+                width: 256
+            };
         requestMock = nock('https://static.wixstatic.com')
             .get('/media/355241_d31358572a2542c5a44738ddcb59e7ea.jpg_256')
             .reply(200, {
@@ -89,11 +101,11 @@ describe('Image Size', function () {
     it('should return image dimensions for gravatar images request', function (done) {
         var url = '//www.gravatar.com/avatar/ef6dcde5c99bb8f685dd451ccc3e050a?s=250&d=mm&r=x',
             expectedImageObject =
-                {
-                    height: 250,
-                    url: '//www.gravatar.com/avatar/ef6dcde5c99bb8f685dd451ccc3e050a?s=250&d=mm&r=x',
-                    width: 250
-                };
+            {
+                height: 250,
+                url: '//www.gravatar.com/avatar/ef6dcde5c99bb8f685dd451ccc3e050a?s=250&d=mm&r=x',
+                width: 250
+            };
         requestMock = nock('http://www.gravatar.com')
             .get('/avatar/ef6dcde5c99bb8f685dd451ccc3e050a?s=250&d=mm&r=x')
             .reply(200, {
@@ -120,13 +132,13 @@ describe('Image Size', function () {
         var url = '/content/images/cat.jpg',
             urlForStub,
             expectedImageObject =
-                {
-                    height: 100,
-                    url: '/content/images/cat.jpg',
-                    width: 100
-                };
+            {
+                height: 100,
+                url: '/content/images/cat.jpg',
+                width: 100
+            };
 
-        urlForStub = sinon.stub(config, 'urlFor');
+        urlForStub = sandbox.stub(utils.url, 'urlFor');
         urlForStub.withArgs('image').returns('http://myblog.com/content/images/cat.jpg');
 
         requestMock = nock('http://myblog.com')
@@ -159,11 +171,11 @@ describe('Image Size', function () {
             .reply(404);
 
         result = Promise.resolve(imageSize.getImageSizeFromUrl(url))
-        .catch(function (err) {
-            requestMock.isDone().should.be.true();
-            should.exist(err);
-            done();
-        });
+            .catch(function (err) {
+                requestMock.isDone().should.be.true();
+                should.exist(err);
+                done();
+            });
     });
 
     it('will timeout', function (done) {
@@ -173,6 +185,7 @@ describe('Image Size', function () {
             .socketDelay(11)
             .reply(408);
 
+<<<<<<< HEAD
         configUtils.set({
             times: {
                 getImageSizeTimeoutInMS: 10
@@ -185,40 +198,49 @@ describe('Image Size', function () {
             should.exist(err);
             done();
         });
+=======
+        configUtils.set('times:getImageSizeTimeoutInMS', 10);
+        result = Promise.resolve(imageSize.getImageSizeFromUrl(url))
+            .catch(function (err) {
+                requestMock.isDone().should.be.true();
+                should.exist(err);
+                done();
+            });
+>>>>>>> c16a58cf6836bab5075e5869d1f7b9a656ac18c9
     });
 
     it('returns error if \`image-size`\ module throws error', function (done) {
         var url = 'https://static.wixstatic.com/media/355241_d31358572a2542c5a44738ddcb59e7ea.jpg_256',
 
-        requestMock = nock('https://static.wixstatic.com')
-            .get('/media/355241_d31358572a2542c5a44738ddcb59e7ea.jpg_256')
-            .reply(200, {
-                data: '<Buffer 2c be a4 40 f7 87 73 1e 57 2c c1 e4 0d 79 03 95 42 f0 42 2e 41 95 27 c9 5c 35 a7 71 2c 09 5a 57 d3 04 1e 83 03 28 07 96 b0 c8 88 65 07 7a d1 d6 63 50>'
-            });
+            requestMock = nock('https://static.wixstatic.com')
+                .get('/media/355241_d31358572a2542c5a44738ddcb59e7ea.jpg_256')
+                .reply(200, {
+                    data: '<Buffer 2c be a4 40 f7 87 73 1e 57 2c c1 e4 0d 79 03 95 42 f0 42 2e 41 95 27 c9 5c 35 a7 71 2c 09 5a 57 d3 04 1e 83 03 28 07 96 b0 c8 88 65 07 7a d1 d6 63 50>'
+                });
 
         sizeOfStub.throws({error: 'image-size could not find dimensions'});
         imageSize.__set__('sizeOf', sizeOfStub);
 
         result = Promise.resolve(imageSize.getImageSizeFromUrl(url))
-        .catch(function (err) {
-            requestMock.isDone().should.be.true();
-            should.exist(err);
-            done();
-        });
+            .catch(function (err) {
+                requestMock.isDone().should.be.true();
+                should.exist(err);
+                done();
+            });
     });
 
     it('returns error if request errors', function (done) {
         var url = 'https://notarealwebsite.com/images/notapicture.jpg',
 
-        requestMock = nock('https://notarealwebsite.com')
-            .get('/images/notapicture.jpg')
-            .replyWithError({message: 'something awful happened', code: 'AWFUL_ERROR'});
+            requestMock = nock('https://notarealwebsite.com')
+                .get('/images/notapicture.jpg')
+                .replyWithError({message: 'something awful happened', code: 'AWFUL_ERROR'});
 
         result = Promise.resolve(imageSize.getImageSizeFromUrl(url))
-        .catch(function (err) {
-            requestMock.isDone().should.be.true();
-            should.exist(err);
-            done();
-        });
+            .catch(function (err) {
+                requestMock.isDone().should.be.true();
+                should.exist(err);
+                done();
+            });
     });
 });

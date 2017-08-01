@@ -1,28 +1,19 @@
-var should         = require('should'),
-    hbs            = require('express-hbs'),
-    utils          = require('./utils'),
-    configUtils    = require('../../utils/configUtils'),
+var should = require('should'),
+    sinon = require('sinon'),
+    configUtils = require('../../utils/configUtils'),
+    helpers = require('../../../server/helpers'),
+    settingsCache = require('../../../server/settings/cache'),
 
-// Stuff we are testing
-    handlebars     = hbs.handlebars,
-    helpers        = require('../../../server/helpers');
+    sandbox = sinon.sandbox.create();
 
 describe('{{meta_description}} helper', function () {
     before(function () {
-        utils.loadHelpers();
-        configUtils.set({
-            theme: {
-                description: 'Just a blogging platform.'
-            }
-        });
+        sandbox.stub(settingsCache, 'get').returns('The professional publishing platform');
     });
 
     after(function () {
         configUtils.restore();
-    });
-
-    it('has loaded meta_description helper', function () {
-        should.exist(handlebars.helpers.meta_description);
+        sandbox.restore();
     });
 
     it('returns correct blog description', function () {
@@ -32,7 +23,7 @@ describe('{{meta_description}} helper', function () {
         );
 
         should.exist(rendered);
-        String(rendered).should.equal('Just a blogging platform.');
+        String(rendered).should.equal('The professional publishing platform');
     });
 
     it('returns empty description on paginated page', function () {
@@ -85,14 +76,14 @@ describe('{{meta_description}} helper', function () {
         String(rendered).should.equal('');
     });
 
-    it('returns correct description for an author page', function () {
+    it('returns empty description for an author page', function () {
         var rendered = helpers.meta_description.call(
             {author: {bio: 'I am a Duck.'}},
             {data: {root: {context: ['author']}}}
         );
 
         should.exist(rendered);
-        String(rendered).should.equal('I am a Duck.');
+        String(rendered).should.equal('');
     });
 
     it('returns empty description for a paginated author page', function () {

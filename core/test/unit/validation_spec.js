@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 var should     = require('should'),
     sinon      = require('sinon'),
 
@@ -12,21 +13,37 @@ describe('Validation', function () {
         sandbox.restore();
     });
 
+=======
+var should = require('should'),
+
+    validation = require('../../server/data/validation');
+
+// Validate our customisations
+describe('Validation', function () {
+>>>>>>> c16a58cf6836bab5075e5869d1f7b9a656ac18c9
     it('should export our required functions', function () {
         should.exist(validation);
 
         validation.should.have.properties(
+<<<<<<< HEAD
             ['validate', 'validator', 'validateSchema', 'validateSettings', 'validateActiveTheme']
+=======
+            ['validate', 'validator', 'validateSchema', 'validateSettings']
+>>>>>>> c16a58cf6836bab5075e5869d1f7b9a656ac18c9
         );
 
         validation.validate.should.be.a.Function();
         validation.validateSchema.should.be.a.Function();
         validation.validateSettings.should.be.a.Function();
+<<<<<<< HEAD
         validation.validateActiveTheme.should.be.a.Function();
+=======
+>>>>>>> c16a58cf6836bab5075e5869d1f7b9a656ac18c9
 
         validation.validator.should.have.properties(['empty', 'notContains', 'isTimezone', 'isEmptyOrURL', 'isSlug']);
     });
 
+<<<<<<< HEAD
     describe('validateActiveTheme', function () {
         it('should reject theme that is not installed', function (done) {
             validation.validateActiveTheme('theme-that-does-not-exist')
@@ -50,6 +67,8 @@ describe('Validation', function () {
         });
     });
 
+=======
+>>>>>>> c16a58cf6836bab5075e5869d1f7b9a656ac18c9
     describe('Validator customisations', function () {
         var validator = validation.validator;
 

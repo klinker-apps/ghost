@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 var _ = require('lodash'),
     validator = require('validator'),
     pipeline = require('../utils/pipeline'),
@@ -12,6 +13,26 @@ var _ = require('lodash'),
     config = require('../config'),
     i18n = require('../i18n'),
     authentication;
+=======
+var _                = require('lodash'),
+    validator        = require('validator'),
+    Promise          = require('bluebird'),
+    pipeline         = require('../utils/pipeline'),
+    settings         = require('./settings'),
+    mail             = require('./../mail'),
+    apiMail          = require('./mail'),
+    globalUtils      = require('../utils'),
+    utils            = require('./utils'),
+    errors           = require('../errors'),
+    models           = require('../models'),
+    logging          = require('../logging'),
+    events           = require('../events'),
+    config           = require('../config'),
+    i18n             = require('../i18n'),
+    spamPrevention   = require('../middleware/api/spam-prevention'),
+    authentication,
+    tokenSecurity = {};
+>>>>>>> c16a58cf6836bab5075e5869d1f7b9a656ac18c9
 
 /**
  * Returns setup status
@@ -41,7 +62,7 @@ function assertSetupCompleted(status) {
                 notCompleted = i18n.t('errors.api.authentication.setupMustBeCompleted');
 
             function throwReason(reason) {
-                throw new errors.NoPermissionError(reason);
+                throw new errors.NoPermissionError({message: reason});
             }
 
             if (isSetup) {
@@ -72,13 +93,13 @@ function setupTasks(setupData) {
 
     function setupUser(userData) {
         var context = {context: {internal: true}},
-            User = dataProvider.User;
+            User = models.User;
 
         return User.findOne({role: 'Owner', status: 'all'}).then(function then(owner) {
             if (!owner) {
-                throw new errors.InternalServerError(
-                    i18n.t('errors.api.authentication.setupUnableToRun')
-                );
+                throw new errors.GhostError({
+                    message: i18n.t('errors.api.authentication.setupUnableToRun')
+                });
             }
 
             return User.setup(userData, _.extend({id: owner.id}, context));
@@ -128,23 +149,22 @@ function setupTasks(setupData) {
  * **See:** [API Methods](index.js.html#api%20methods)
  */
 authentication = {
-
     /**
      * @description generate a reset token for a given email address
-     * @param {Object} resetRequest
+     * @param {Object} object
      * @returns {Promise<Object>} message
      */
-    generateResetToken: function generateResetToken(resetRequest) {
+    generateResetToken: function generateResetToken(object) {
         var tasks;
 
-        function validateRequest(resetRequest) {
-            return utils.checkObject(resetRequest, 'passwordreset').then(function then(data) {
+        function validateRequest(object) {
+            return utils.checkObject(object, 'passwordreset').then(function then(data) {
                 var email = data.passwordreset[0].email;
 
                 if (typeof email !== 'string' || !validator.isEmail(email)) {
-                    throw new errors.BadRequestError(
-                        i18n.t('errors.api.authentication.noEmailProvided')
-                    );
+                    throw new errors.BadRequestError({
+                        message: i18n.t('errors.api.authentication.noEmailProvided')
+                    });
                 }
 
                 return email;
@@ -152,26 +172,37 @@ authentication = {
         }
 
         function generateToken(email) {
-            var settingsQuery = {context: {internal: true}, key: 'dbHash'};
+            var options = {context: {internal: true}},
+                dbHash, token;
 
-            return settings.read(settingsQuery).then(function then(response) {
-                var dbHash = response.settings[0].value,
-                    expiresAt = Date.now() + globalUtils.ONE_DAY_MS;
+            return settings.read(_.merge({key: 'db_hash'}, options))
+                .then(function fetchedSettings(response) {
+                    dbHash = response.settings[0].value;
 
-                return dataProvider.User.generateResetToken(email, expiresAt, dbHash);
-            }).then(function then(resetToken) {
-                return {
-                    email: email,
-                    resetToken: resetToken
-                };
-            });
+                    return models.User.getByEmail(email, options);
+                })
+                .then(function fetchedUser(user) {
+                    if (!user) {
+                        throw new errors.NotFoundError({message: i18n.t('errors.api.users.userNotFound')});
+                    }
+
+                    token = globalUtils.tokens.resetToken.generateHash({
+                        expires: Date.now() + globalUtils.ONE_DAY_MS,
+                        email: email,
+                        dbHash: dbHash,
+                        password: user.get('password')
+                    });
+
+                    return {
+                        email: email,
+                        resetToken: token
+                    };
+                });
         }
 
         function sendResetNotification(data) {
-            var baseUrl = config.forceAdminSSL ? (config.urlSSL || config.url) : config.url,
-                resetUrl = baseUrl.replace(/\/$/, '') +
-                    '/ghost/reset/' +
-                    globalUtils.encodeBase64URLsafe(data.resetToken) + '/';
+            var adminUrl = globalUtils.url.urlFor('admin', true),
+                resetUrl = globalUtils.url.urlJoin(adminUrl, 'reset', globalUtils.encodeBase64URLsafe(data.resetToken), '/');
 
             return mail.utils.generateContent({
                 data: {
@@ -211,39 +242,105 @@ authentication = {
             formatResponse
         ];
 
-        return pipeline(tasks, resetRequest);
+        return pipeline(tasks, object);
     },
 
     /**
      * ## Reset Password
      * reset password if a valid token and password (2x) is passed
-     * @param {Object} resetRequest
+     * @param {Object} object
      * @returns {Promise<Object>} message
      */
-    resetPassword: function resetPassword(resetRequest) {
-        var tasks;
+    resetPassword: function resetPassword(object, opts) {
+        var tasks, tokenIsCorrect, dbHash, options = {context: {internal: true}}, tokenParts;
 
-        function validateRequest(resetRequest) {
-            return utils.checkObject(resetRequest, 'passwordreset');
+        function validateRequest() {
+            return utils.validate('passwordreset')(object, options)
+                .then(function (options) {
+                    var data = options.data.passwordreset[0];
+
+                    if (data.newPassword !== data.ne2Password) {
+                        return Promise.reject(new errors.ValidationError({
+                            message: i18n.t('errors.models.user.newPasswordsDoNotMatch')
+                        }));
+                    }
+
+                    return Promise.resolve(options);
+                });
         }
 
-        function doReset(resetRequest) {
-            var settingsQuery = {context: {internal: true}, key: 'dbHash'},
-                data = resetRequest.passwordreset[0],
-                resetToken = data.token,
-                newPassword = data.newPassword,
-                ne2Password = data.ne2Password;
+        function extractTokenParts(options) {
+            options.data.passwordreset[0].token = globalUtils.decodeBase64URLsafe(options.data.passwordreset[0].token);
 
-            return settings.read(settingsQuery).then(function then(response) {
-                return dataProvider.User.resetPassword({
-                    token: resetToken,
-                    newPassword: newPassword,
-                    ne2Password: ne2Password,
-                    dbHash: response.settings[0].value
-                });
-            }).catch(function (error) {
-                throw new errors.UnauthorizedError(error.message);
+            tokenParts = globalUtils.tokens.resetToken.extract({
+                token: options.data.passwordreset[0].token
             });
+
+            if (!tokenParts) {
+                return Promise.reject(new errors.UnauthorizedError({
+                    message: i18n.t('errors.api.common.invalidTokenStructure')
+                }));
+            }
+
+            return Promise.resolve(options);
+        }
+
+        // @TODO: use brute force middleware (see https://github.com/TryGhost/Ghost/pull/7579)
+        function protectBruteForce(options) {
+            if (tokenSecurity[tokenParts.email + '+' + tokenParts.expires] &&
+                tokenSecurity[tokenParts.email + '+' + tokenParts.expires].count >= 10) {
+                return Promise.reject(new errors.NoPermissionError({
+                    message: i18n.t('errors.models.user.tokenLocked')
+                }));
+            }
+
+            return Promise.resolve(options);
+        }
+
+        function doReset(options) {
+            var data = options.data.passwordreset[0],
+                resetToken = data.token,
+                oldPassword = data.oldPassword,
+                newPassword = data.newPassword;
+
+            return settings.read(_.merge({key: 'db_hash'}, options))
+                .then(function fetchedSettings(response) {
+                    dbHash = response.settings[0].value;
+
+                    return models.User.getByEmail(tokenParts.email, options);
+                })
+                .then(function fetchedUser(user) {
+                    if (!user) {
+                        throw new errors.NotFoundError({message: i18n.t('errors.api.users.userNotFound')});
+                    }
+
+                    tokenIsCorrect = globalUtils.tokens.resetToken.compare({
+                        token: resetToken,
+                        dbHash: dbHash,
+                        password: user.get('password')
+                    });
+
+                    if (!tokenIsCorrect) {
+                        return Promise.reject(new errors.BadRequestError({
+                            message: i18n.t('errors.api.common.invalidTokenStructure')
+                        }));
+                    }
+
+                    spamPrevention.userLogin().reset(opts.ip, tokenParts.email + 'login');
+
+                    return models.User.changePassword({
+                        oldPassword: oldPassword,
+                        newPassword: newPassword,
+                        user_id: user.id
+                    }, options);
+                })
+                .then(function changedPassword(updatedUser) {
+                    updatedUser.set('status', 'active');
+                    return updatedUser.save(options);
+                })
+                .catch(function (err) {
+                    throw new errors.UnauthorizedError({err: err});
+                });
         }
 
         function formatResponse() {
@@ -255,13 +352,15 @@ authentication = {
         }
 
         tasks = [
-            assertSetupCompleted(true),
             validateRequest,
+            assertSetupCompleted(true),
+            extractTokenParts,
+            protectBruteForce,
             doReset,
             formatResponse
         ];
 
-        return pipeline(tasks, resetRequest);
+        return pipeline(tasks, object, options);
     },
 
     /**
@@ -270,33 +369,56 @@ authentication = {
      * @returns {Promise<Object>}
      */
     acceptInvitation: function acceptInvitation(invitation) {
-        var tasks;
+        var tasks, invite, options = {context: {internal: true}};
 
         function validateInvitation(invitation) {
-            return utils.checkObject(invitation, 'invitation');
+            return utils.checkObject(invitation, 'invitation')
+                .then(function () {
+                    if (!invitation.invitation[0].token) {
+                        return Promise.reject(new errors.ValidationError({message: i18n.t('errors.api.authentication.noTokenProvided')}));
+                    }
+
+                    if (!invitation.invitation[0].email) {
+                        return Promise.reject(new errors.ValidationError({message: i18n.t('errors.api.authentication.noEmailProvided')}));
+                    }
+
+                    if (!invitation.invitation[0].password) {
+                        return Promise.reject(new errors.ValidationError({message: i18n.t('errors.api.authentication.noPasswordProvided')}));
+                    }
+
+                    if (!invitation.invitation[0].name) {
+                        return Promise.reject(new errors.ValidationError({message: i18n.t('errors.api.authentication.noNameProvided')}));
+                    }
+
+                    return invitation;
+                });
         }
 
         function processInvitation(invitation) {
-            var User = dataProvider.User,
-                settingsQuery = {context: {internal: true}, key: 'dbHash'},
-                data = invitation.invitation[0],
-                resetToken = data.token,
-                newPassword = data.password,
-                email = data.email,
-                name = data.name;
+            var data = invitation.invitation[0], inviteToken = globalUtils.decodeBase64URLsafe(data.token);
 
-            return settings.read(settingsQuery).then(function then(response) {
-                return User.resetPassword({
-                    token: resetToken,
-                    newPassword: newPassword,
-                    ne2Password: newPassword,
-                    dbHash: response.settings[0].value
+            return models.Invite.findOne({token: inviteToken, status: 'sent'}, options)
+                .then(function (_invite) {
+                    invite = _invite;
+
+                    if (!invite) {
+                        throw new errors.NotFoundError({message: i18n.t('errors.api.invites.inviteNotFound')});
+                    }
+
+                    if (invite.get('expires') < Date.now()) {
+                        throw new errors.NotFoundError({message: i18n.t('errors.api.invites.inviteExpired')});
+                    }
+
+                    return models.User.add({
+                        email: data.email,
+                        name: data.name,
+                        password: data.password,
+                        roles: [invite.toJSON().role_id]
+                    }, options);
+                })
+                .then(function () {
+                    return invite.destroy(options);
                 });
-            }).then(function then(user) {
-                return User.edit({name: name, email: email, slug: ''}, {id: user.id});
-            }).catch(function (error) {
-                throw new errors.UnauthorizedError(error.message);
-            });
         }
 
         function formatResponse() {
@@ -330,32 +452,33 @@ authentication = {
             var email = options.email;
 
             if (typeof email !== 'string' || !validator.isEmail(email)) {
-                throw new errors.BadRequestError(
-                    i18n.t('errors.api.authentication.invalidEmailReceived')
-                );
+                throw new errors.BadRequestError({
+                    message: i18n.t('errors.api.authentication.invalidEmailReceived')
+                });
             }
 
             return email;
         }
 
         function checkInvitation(email) {
-            return dataProvider.User
-                .where({email: email, status: 'invited'})
-                .count('id')
-                .then(function then(count) {
-                    return !!count;
-                });
-        }
+            return models.Invite
+                .findOne({email: email, status: 'sent'}, options)
+                .then(function fetchedInvite(invite) {
+                    if (!invite) {
+                        return {invitation: [{valid: false}]};
+                    }
 
-        function formatResponse(isInvited) {
-            return {invitation: [{valid: isInvited}]};
+                    return models.User.findOne({id: invite.get('created_by')})
+                        .then(function fetchedUser(user) {
+                            return {invitation: [{valid: true, invitedBy: user.get('name')}]};
+                        });
+                });
         }
 
         tasks = [
             processArgs,
             assertSetupCompleted(true),
-            checkInvitation,
-            formatResponse
+            checkInvitation
         ];
 
         return pipeline(tasks, localOptions);
@@ -366,16 +489,10 @@ authentication = {
      * @return {Promise}
      */
     isSetup: function isSetup() {
-        var tasks,
-            validStatuses = ['active', 'warn-1', 'warn-2', 'warn-3', 'warn-4', 'locked'];
+        var tasks;
 
         function checkSetupStatus() {
-            return dataProvider.User
-                .where('status', 'in', validStatuses)
-                .count('id')
-                .then(function (count) {
-                    return !!count;
-                });
+            return models.User.isSetup();
         }
 
         function formatResponse(isSetup) {
@@ -435,6 +552,7 @@ authentication = {
                         };
 
                     apiMail.send(payload, {context: {internal: true}}).catch(function (error) {
+<<<<<<< HEAD
                         errors.logError(
                             error.message,
                             i18n.t(
@@ -442,6 +560,13 @@ authentication = {
                             ),
                             i18n.t('errors.api.authentication.checkEmailConfigInstructions', {url: 'https://docs.ghost.org/v0.11.9/docs/mail-config'})
                         );
+=======
+                        logging.error(new errors.EmailError({
+                            err: error,
+                            context: i18n.t('errors.api.authentication.unableToSendWelcomeEmail'),
+                            help: i18n.t('errors.api.authentication.checkEmailConfigInstructions', {url: 'http://docs.ghost.org/v1.0.0/docs/mail-config'})
+                        }));
+>>>>>>> c16a58cf6836bab5075e5869d1f7b9a656ac18c9
                     });
                 })
                 .return(setupUser);
@@ -473,17 +598,17 @@ authentication = {
 
         function processArgs(setupDetails, options) {
             if (!options.context || !options.context.user) {
-                throw new errors.NoPermissionError(i18n.t('errors.api.authentication.notTheBlogOwner'));
+                throw new errors.NoPermissionError({message: i18n.t('errors.api.authentication.notTheBlogOwner')});
             }
 
             return _.assign({setupDetails: setupDetails}, options);
         }
 
         function checkPermission(options) {
-            return dataProvider.User.findOne({role: 'Owner', status: 'all'})
+            return models.User.findOne({role: 'Owner', status: 'all'})
                 .then(function (owner) {
                     if (owner.id !== options.context.user) {
-                        throw new errors.NoPermissionError(i18n.t('errors.api.authentication.notTheBlogOwner'));
+                        throw new errors.NoPermissionError({message: i18n.t('errors.api.authentication.notTheBlogOwner')});
                     }
 
                     return options.setupDetails;
@@ -521,8 +646,8 @@ authentication = {
 
         function revokeToken(options) {
             var providers = [
-                    dataProvider.Refreshtoken,
-                    dataProvider.Accesstoken
+                    models.Refreshtoken,
+                    models.Accesstoken
                 ],
                 response = {token: options.token};
 
@@ -540,9 +665,9 @@ authentication = {
                         return destroyToken(providers.pop(), options, providers);
                     })
                     .catch(function () {
-                        throw new errors.TokenRevocationError(
-                            i18n.t('errors.api.authentication.tokenRevocationFailed')
-                        );
+                        throw new errors.TokenRevocationError({
+                            message: i18n.t('errors.api.authentication.tokenRevocationFailed')
+                        });
                     });
             }
 

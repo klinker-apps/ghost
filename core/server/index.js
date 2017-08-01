@@ -13,23 +13,27 @@
 require('./overrides');
 
 // Module dependencies
+<<<<<<< HEAD
 var express = require('express'),
     _ = require('lodash'),
     uuid = require('uuid'),
-    Promise = require('bluebird'),
-    i18n = require('./i18n'),
-    api = require('./api'),
+=======
+var debug = require('debug')('ghost:boot:init'),
+// Config should be first require, as it triggers the initial load of the config files
     config = require('./config'),
-    errors = require('./errors'),
-    middleware = require('./middleware'),
-    migrations = require('./data/migration'),
-    versioning = require('./data/schema/versioning'),
+>>>>>>> c16a58cf6836bab5075e5869d1f7b9a656ac18c9
+    Promise = require('bluebird'),
+    logging = require('./logging'),
+    i18n = require('./i18n'),
     models = require('./models'),
     permissions = require('./permissions'),
     apps = require('./apps'),
+    auth = require('./auth'),
+    dbHealth = require('./data/db/health'),
     xmlrpc = require('./data/xml/xmlrpc'),
     slack = require('./data/slack'),
     GhostServer = require('./ghost-server'),
+<<<<<<< HEAD
     scheduling = require('./scheduling'),
     dbHash;
 
@@ -61,15 +65,27 @@ function init(options) {
     options = options || {};
 
     var ghostServer = null, settingsMigrations, currentDatabaseVersion;
+=======
+    scheduling = require('./adapters/scheduling'),
+    settings = require('./settings'),
+    settingsCache = require('./settings/cache'),
+    themes = require('./themes'),
+    utils = require('./utils');
 
-    // ### Initialisation
-    // The server and its dependencies require a populated config
-    // It returns a promise that is resolved when the application
-    // has finished starting up.
+// ## Initialise Ghost
+function init() {
+    debug('Init Start...');
+>>>>>>> c16a58cf6836bab5075e5869d1f7b9a656ac18c9
+
+    var ghostServer, parentApp;
 
     // Initialize Internationalization
     i18n.init();
+    debug('I18n done');
+    models.init();
+    debug('models done');
 
+<<<<<<< HEAD
     // Load our config.js file from the local file system.
     return config.load(options.config).then(function () {
         return config.checkDeprecated();
@@ -162,19 +178,29 @@ function init(options) {
         } else if (response.error) {
             return Promise.reject(response.error);
         }
+=======
+    return dbHealth.check().then(function () {
+        debug('DB health check done');
+        // Populate any missing default settings
+        // Refresh the API settings cache
+        return settings.init();
+>>>>>>> c16a58cf6836bab5075e5869d1f7b9a656ac18c9
     }).then(function () {
+        debug('Update settings cache done');
         // Initialize the permissions actions and objects
-        // NOTE: Must be done before initDbHashAndFirstRun calls
         return permissions.init();
     }).then(function () {
+<<<<<<< HEAD
         // Initialize the settings cache now,
         // This is an optimisation, so that further reads from settings are fast.
         // We do also do this after boot
         return api.init();
     }).then(function () {
+=======
+        debug('Permissions done');
+>>>>>>> c16a58cf6836bab5075e5869d1f7b9a656ac18c9
         return Promise.join(
-            // Check for or initialise a dbHash.
-            initDbHashAndFirstRun(),
+            themes.init(),
             // Initialize apps
             apps.init(),
             // Initialize xmrpc ping
@@ -183,20 +209,55 @@ function init(options) {
             slack.listen()
         );
     }).then(function () {
-        // Get reference to an express app instance.
-        var parentApp = express();
+        debug('Apps, XMLRPC, Slack done');
 
+<<<<<<< HEAD
         // ## Middleware and Routing
         middleware(parentApp);
 
+=======
+        // Setup our collection of express apps
+        parentApp = require('./app')();
+
+        debug('Express Apps done');
+    }).then(function () {
+        return auth.validation.validate({
+            authType: config.get('auth:type')
+        });
+    }).then(function () {
+        // runs asynchronous
+        auth.init({
+            authType: config.get('auth:type'),
+            ghostAuthUrl: config.get('auth:url'),
+            redirectUri: utils.url.urlFor('admin', true),
+            clientUri: utils.url.urlFor('home', true),
+            clientName: settingsCache.get('title'),
+            clientDescription: settingsCache.get('description')
+        }).then(function (response) {
+            parentApp.use(response.auth);
+        }).catch(function onAuthError(err) {
+            logging.error(err);
+        });
+    }).then(function () {
+        debug('Auth done');
+>>>>>>> c16a58cf6836bab5075e5869d1f7b9a656ac18c9
         return new GhostServer(parentApp);
     }).then(function (_ghostServer) {
         ghostServer = _ghostServer;
 
         // scheduling can trigger api requests, that's why we initialize the module after the ghost server creation
         // scheduling module can create x schedulers with different adapters
-        return scheduling.init(_.extend(config.scheduling, {apiUrl: config.apiUrl()}));
+        debug('Server done');
+        return scheduling.init({
+            schedulerUrl: config.get('scheduling').schedulerUrl,
+            active: config.get('scheduling').active,
+            apiUrl: utils.url.urlFor('api', true),
+            internalPath: config.get('paths').internalSchedulingPath,
+            contentPath: config.getContentPath('scheduling')
+        });
     }).then(function () {
+        debug('Scheduling done');
+        debug('...Init End');
         return ghostServer;
     });
 }

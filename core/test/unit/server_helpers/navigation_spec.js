@@ -1,12 +1,11 @@
-var should         = require('should'),
-    hbs            = require('express-hbs'),
-    utils          = require('./utils'),
-    configUtils    = require('../../utils/configUtils'),
-    path           = require('path'),
+var should = require('should'),
+    hbs = require('../../../server/themes/engine'),
+
+    configUtils = require('../../utils/configUtils'),
+    path = require('path'),
 
 // Stuff we are testing
-    handlebars     = hbs.handlebars,
-    helpers        = require('../../../server/helpers');
+    helpers = require('../../../server/helpers');
 
 describe('{{navigation}} helper', function () {
     var runHelper = function (data) {
@@ -17,14 +16,17 @@ describe('{{navigation}} helper', function () {
         optionsData;
 
     before(function (done) {
-        utils.loadHelpers();
         hbs.express3({
-            partialsDir: [configUtils.config.paths.helperTemplates]
+            partialsDir: [configUtils.config.get('paths').helperTemplates]
         });
 
         hbs.cachePartials(function () {
             done();
         });
+
+        // The navigation partial expects this helper
+        // @TODO: change to register with Ghost's own registration tools
+        hbs.registerHelper('url', helpers.url);
     });
 
     beforeEach(function () {
@@ -40,17 +42,14 @@ describe('{{navigation}} helper', function () {
         };
     });
 
-    it('has loaded navigation helper', function () {
-        should.exist(handlebars.helpers.navigation);
-    });
-
     it('should throw errors on invalid data', function () {
         // Test 1: navigation = string
         optionsData.data.blog.navigation = 'not an object';
         runHelper(optionsData).should.throwError('navigation data is not an object or is a function');
 
         // Test 2: navigation = function
-        optionsData.data.blog.navigation = function () {};
+        optionsData.data.blog.navigation = function () {
+        };
         runHelper(optionsData).should.throwError('navigation data is not an object or is a function');
 
         // Test 3: invalid label
@@ -83,7 +82,7 @@ describe('{{navigation}} helper', function () {
 
     it('can render one item', function () {
         var singleItem = {label: 'Foo', url: '/foo'},
-            testUrl = 'href="' + configUtils.config.url + '/foo"',
+            testUrl = 'href="' + configUtils.config.get('url') + '/foo"',
             rendered;
 
         optionsData.data.blog.navigation = [singleItem];
@@ -98,8 +97,8 @@ describe('{{navigation}} helper', function () {
     it('can render multiple items', function () {
         var firstItem = {label: 'Foo', url: '/foo'},
             secondItem = {label: 'Bar Baz Qux', url: '/qux'},
-            testUrl = 'href="' + configUtils.config.url + '/foo"',
-            testUrl2 = 'href="' + configUtils.config.url + '/qux"',
+            testUrl = 'href="' + configUtils.config.get('url') + '/foo"',
+            testUrl2 = 'href="' + configUtils.config.get('url') + '/qux"',
             rendered;
 
         optionsData.data.blog.navigation = [firstItem, secondItem];
@@ -186,9 +185,8 @@ describe('{{navigation}} helper with custom template', function () {
     var optionsData;
 
     before(function (done) {
-        utils.loadHelpers();
         hbs.express3({
-            partialsDir: [path.resolve(configUtils.config.paths.corePath, 'test/unit/server_helpers/test_tpl')]
+            partialsDir: [path.resolve(configUtils.config.get('paths').corePath, 'test/unit/server_helpers/test_tpl')]
         });
 
         hbs.cachePartials(function () {
@@ -212,7 +210,7 @@ describe('{{navigation}} helper with custom template', function () {
 
     it('can render one item and @blog title', function () {
         var singleItem = {label: 'Foo', url: '/foo'},
-            testUrl = 'href="' + configUtils.config.url + '/foo"',
+            testUrl = 'href="' + configUtils.config.get('url') + '/foo"',
             rendered;
 
         optionsData.data.blog.navigation = [singleItem];

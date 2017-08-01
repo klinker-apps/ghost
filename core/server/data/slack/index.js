@@ -1,13 +1,14 @@
 var https           = require('https'),
-    errors          = require('../../errors'),
     url             = require('url'),
     Promise         = require('bluebird'),
-    config          = require('../../config'),
+    errors          = require('../../errors'),
+    logging         = require('../../logging'),
+    utils           = require('../../utils'),
+    blogIconUtils   = require('../../utils/blog-icon'),
     events          = require('../../events'),
     api             = require('../../api/settings'),
     i18n            = require('../../i18n'),
     schema          = require('../schema').checks,
-    options,
     req,
     slackData = {};
 
@@ -31,29 +32,54 @@ function makeRequest(reqOptions, reqPayload) {
     reqPayload = JSON.stringify(reqPayload);
 
     req.write(reqPayload);
+<<<<<<< HEAD
     req.on('error', function (error) {
         errors.logError(
             error,
             i18n.t('errors.data.xml.xmlrpc.pingUpdateFailed.error'),
             i18n.t('errors.data.xml.xmlrpc.pingUpdateFailed.help', {url: 'http://docs.ghost.org/v0.11.9'})
         );
+=======
+    req.on('error', function (err) {
+        logging.error(new errors.GhostError({
+            err: err,
+            context: i18n.t('errors.data.xml.xmlrpc.pingUpdateFailed.error'),
+            help: i18n.t('errors.data.xml.xmlrpc.pingUpdateFailed.help', {url: 'http://docs.ghost.org'})
+        }));
+>>>>>>> c16a58cf6836bab5075e5869d1f7b9a656ac18c9
     });
 
     req.end();
 }
 
-function ping(post) {
-    var message;
+function ping(post, options) {
+    options = options || {};
+
+    var message, reqOptions;
+
+    // CASE: do not ping slack if we import a database
+    if (options.importing) {
+        return Promise.resolve();
+    }
 
     // If this is a post, we want to send the link of the post
     if (schema.isPost(post)) {
-        message = config.urlFor('post', {post: post}, true);
+        message = utils.url.urlFor('post', {post: post}, true);
     } else {
         message = post.message;
     }
 
     return getSlackSettings().then(function (slackSettings) {
         // Quit here if slack integration is not activated
+        var defaultPostSlugs = [
+            'welcome',
+            'the-editor',
+            'using-tags',
+            'managing-users',
+            'private-sites',
+            'advanced-markdown',
+            'themes'
+        ];
 
         if (slackSettings.url && slackSettings.url !== '') {
             // Only ping when not a page
@@ -61,36 +87,36 @@ function ping(post) {
                 return;
             }
 
-            // Don't ping for the welcome to ghost post.
+            // Don't ping for the default posts.
             // This also handles the case where during ghost's first run
             // models.init() inserts this post but permissions.init() hasn't
             // (can't) run yet.
-            if (post.slug === 'welcome-to-ghost') {
+            if (defaultPostSlugs.indexOf(post.slug) > -1) {
                 return;
             }
 
             slackData = {
                 text: message,
                 unfurl_links: true,
-                icon_url: config.urlFor({relativeUrl: '/ghost/img/ghosticon.jpg'}, {}, true),
+                icon_url: blogIconUtils.getIconUrl(true),
                 username: 'Ghost'
             };
 
             // fill the options for https request
-            options = url.parse(slackSettings.url);
-            options.method = 'POST';
-            options.headers = {'Content-type': 'application/json'};
+            reqOptions = url.parse(slackSettings.url);
+            reqOptions.method = 'POST';
+            reqOptions.headers = {'Content-type': 'application/json'};
 
             // with all the data we have, we're doing the request now
-            makeRequest(options, slackData);
+            makeRequest(reqOptions, slackData);
         } else {
             return;
         }
     });
 }
 
-function listener(model) {
-    ping(model.toJSON());
+function listener(model, options) {
+    ping(model.toJSON(), options);
 }
 
 function testPing() {

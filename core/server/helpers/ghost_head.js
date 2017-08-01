@@ -6,28 +6,33 @@
 // We use the name ghost_head to match the helper for consistency:
 // jscs:disable requireCamelCaseOrUpperCaseIdentifiers
 
-var getMetaData = require('../data/meta'),
-    hbs = require('express-hbs'),
-    escapeExpression = hbs.handlebars.Utils.escapeExpression,
-    SafeString = hbs.handlebars.SafeString,
+var proxy = require('./proxy'),
     _ = require('lodash'),
-    filters = require('../filters'),
-    assetHelper = require('./asset'),
-    config = require('../config'),
     Promise = require('bluebird'),
-    labs = require('../utils/labs'),
-    api = require('../api');
+
+    getMetaData = proxy.metaData.get,
+    getAssetUrl = proxy.metaData.getAssetUrl,
+    escapeExpression = proxy.escapeExpression,
+    SafeString = proxy.SafeString,
+    filters = proxy.filters,
+    labs = proxy.labs,
+    api = proxy.api,
+    settingsCache = proxy.settingsCache,
+    config = proxy.config,
+    blogIconUtils = proxy.blogIcon;
 
 function getClient() {
     if (labs.isSet('publicAPI') === true) {
         return api.clients.read({slug: 'ghost-frontend'}).then(function (client) {
             client = client.clients[0];
+
             if (client.status === 'enabled') {
                 return {
                     id: client.slug,
                     secret: client.secret
                 };
             }
+
             return {};
         });
     }
@@ -41,6 +46,7 @@ function writeMetaTag(property, content, type) {
 
 function finaliseStructuredData(metaData) {
     var head = [];
+
     _.each(metaData.structuredData, function (content, property) {
         if (property === 'article:tag') {
             _.each(metaData.keywords, function (keyword) {
@@ -56,12 +62,14 @@ function finaliseStructuredData(metaData) {
                 escapeExpression(content)));
         }
     });
+
     return head;
 }
 
 function getAjaxHelper(clientId, clientSecret) {
     return '<script type="text/javascript" src="' +
-        assetHelper('shared/ghost-url.js', {hash: {minifyInProduction: true}}) + '"></script>\n' +
+        getAssetUrl('public/ghost-sdk.js', true) +
+        '"></script>\n' +
         '<script type="text/javascript">\n' +
         'ghost.init({\n' +
         '\tclientId: "' + clientId + '",\n' +
@@ -70,23 +78,26 @@ function getAjaxHelper(clientId, clientSecret) {
         '</script>';
 }
 
-function ghost_head(options) {
-    // if error page do nothing
-    if (this.statusCode >= 400) {
+module.exports = function ghost_head(options) {
+    // if server error page do nothing
+    if (this.statusCode >= 500) {
         return;
     }
 
     var metaData,
         client,
         head = [],
+        codeInjection = settingsCache.get('ghost_head'),
         context = this.context ? this.context : null,
         useStructuredData = !config.isPrivacyDisabled('useStructuredData'),
         safeVersion = this.safeVersion,
-        referrerPolicy = config.referrerPolicy ? config.referrerPolicy : 'no-referrer-when-downgrade',
+        referrerPolicy = config.get('referrerPolicy') ? config.get('referrerPolicy') : 'no-referrer-when-downgrade',
         fetch = {
             metaData: getMetaData(this, options.data.root),
             client: getClient()
-        };
+        },
+        favicon = blogIconUtils.getIconUrl(),
+        iconType = blogIconUtils.getIconType(favicon);
 
     return Promise.props(fetch).then(function (response) {
         client = response.client;
@@ -94,12 +105,21 @@ function ghost_head(options) {
 
         if (context) {
             // head is our main array that holds our meta data
+            if (metaData.metaDescription && metaData.metaDescription.length > 0) {
+                head.push('<meta name="description" content="' + escapeExpression(metaData.metaDescription) + '" />');
+            }
+
+            head.push('<link rel="shortcut icon" href="' + favicon + '" type="image/' + iconType + '" />');
             head.push('<link rel="canonical" href="' +
                 escapeExpression(metaData.canonicalUrl) + '" />');
             head.push('<meta name="referrer" content="' + referrerPolicy + '" />');
 
             // show amp link in post when 1. we are not on the amp page and 2. amp is enabled
+<<<<<<< HEAD
             if (_.includes(context, 'post') && !_.includes(context, 'amp') && config.theme.amp) {
+=======
+            if (_.includes(context, 'post') && !_.includes(context, 'amp') && settingsCache.get('amp')) {
+>>>>>>> c16a58cf6836bab5075e5869d1f7b9a656ac18c9
                 head.push('<link rel="amphtml" href="' +
                     escapeExpression(metaData.ampUrl) + '" />');
             }
@@ -133,20 +153,17 @@ function ghost_head(options) {
 
         head.push('<meta name="generator" content="Ghost ' +
             escapeExpression(safeVersion) + '" />');
+
         head.push('<link rel="alternate" type="application/rss+xml" title="' +
             escapeExpression(metaData.blog.title)  + '" href="' +
             escapeExpression(metaData.rssUrl) + '" />');
 
-        return api.settings.read({key: 'ghost_head'});
-    }).then(function (response) {
         // no code injection for amp context!!!
-        if (!_.includes(context, 'amp')) {
-            head.push(response.settings[0].value);
+        if (!_.includes(context, 'amp') && !_.isEmpty(codeInjection)) {
+            head.push(codeInjection);
         }
         return filters.doFilter('ghost_head', head);
     }).then(function (head) {
         return new SafeString(head.join('\n    ').trim());
     });
-}
-
-module.exports = ghost_head;
+};

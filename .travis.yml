@@ -1,39 +1,58 @@
 language: node_js
 node_js:
+<<<<<<< HEAD
   - "4"
+=======
+>>>>>>> c16a58cf6836bab5075e5869d1f7b9a656ac18c9
   - "6"
+  - "4"
+
 sudo: false
+
 cache:
   directories:
     - node_modules
-    - core/client/node_modules
-    - core/client/bower_components
+
 addons:
-  postgresql: "9.3"
+  apt:
+    sources:
+      - sourceline: 'deb https://dl.yarnpkg.com/debian/ stable main'
+        key_url: 'https://dl.yarnpkg.com/debian/pubkey.gpg'
+    packages:
+      - yarn
+
 env:
   global:
     - GITHUB_OAUTH_KEY=003a44d58f12089d0c0261338298af3813330949
-    - GHOST_NODE_VERSION_CHECK=false
-    - TEST_SUITE=server
   matrix:
     - DB=sqlite3 NODE_ENV=testing
     - DB=mysql NODE_ENV=testing-mysql
-    - DB=pg NODE_ENV=testing-pg
+
 matrix:
   include:
+<<<<<<< HEAD
     - node_js: "4"
+=======
+    - node_js: "6"
+>>>>>>> c16a58cf6836bab5075e5869d1f7b9a656ac18c9
       env: TEST_SUITE=lint
   fast_finish: true
+
 branches:
   except:
     - /^greenkeeper-.+$/
+
 before_install:
   - if [ $DB == "mysql" ]; then mysql -e 'create database ghost_testing'; fi
-  - if [ $DB == "pg" ]; then psql -c 'create database ghost_testing;' -U postgres; fi
+
+install:
+  - yarn
+  - if [ "$DB" == "sqlite3" ]; then yarn add --force sqlite3; fi # fix sqlite caching issues
+
 after_success:
   - |
       if [ "$TRAVIS_PULL_REQUEST" = "false" ]; then
-        if [[ "$DB" = "sqlite3" && "$TRAVIS_NODE_VERSION" = "4" ]]; then
+        if [[ "$DB" = "sqlite3" && "$TRAVIS_NODE_VERSION" = "6" ]]; then
           echo "Generate coverage..."
           grunt coverage
           npm install -g codeclimate-test-reporter

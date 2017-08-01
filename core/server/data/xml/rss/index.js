@@ -2,10 +2,12 @@ var crypto      = require('crypto'),
     downsize    = require('downsize'),
     RSS         = require('rss'),
     config      = require('../../../config'),
+    utils       = require('../../../utils'),
     errors      = require('../../../errors'),
+    i18n        = require('../../../i18n'),
     filters     = require('../../../filters'),
     processUrls = require('../../../utils/make-absolute-urls'),
-    labs        = require('../../../utils/labs'),
+    settingsCache = require('../../../settings/cache'),
 
     // Really ugly temporary hack for location of things
     fetchData   = require('../../../controllers/frontend/fetch-data'),
@@ -17,11 +19,11 @@ var crypto      = require('crypto'),
     feedCache = {};
 
 function isTag(req) {
-    return req.originalUrl.indexOf('/' + config.routeKeywords.tag + '/') !== -1;
+    return req.originalUrl.indexOf(utils.url.urlJoin('/', config.get('routeKeywords').tag, '/')) !== -1;
 }
 
 function isAuthor(req) {
-    return req.originalUrl.indexOf('/' + config.routeKeywords.author + '/') !== -1;
+    return req.originalUrl.indexOf(utils.url.urlJoin('/', config.get('routeKeywords').author, '/')) !== -1;
 }
 
 function handleError(next) {
@@ -40,8 +42,8 @@ function getData(channelOpts, slugParam) {
         if (result.data && result.data.tag) { titleStart = result.data.tag[0].name + ' - ' || ''; }
         if (result.data && result.data.author) { titleStart = result.data.author[0].name + ' - ' || ''; }
 
-        response.title = titleStart + config.theme.title;
-        response.description = config.theme.description;
+        response.title = titleStart + settingsCache.get('title');
+        response.description = settingsCache.get('description');
         response.results = {
             posts: result.posts,
             meta: result.meta
@@ -52,14 +54,14 @@ function getData(channelOpts, slugParam) {
 }
 
 function getBaseUrl(req, slugParam) {
-    var baseUrl = config.paths.subdir;
+    var baseUrl = utils.url.getSubdir();
 
     if (isTag(req)) {
-        baseUrl += '/' + config.routeKeywords.tag + '/' + slugParam + '/rss/';
+        baseUrl = utils.url.urlJoin(baseUrl, config.get('routeKeywords').tag, slugParam, 'rss/');
     } else if (isAuthor(req)) {
-        baseUrl += '/' + config.routeKeywords.author + '/' + slugParam + '/rss/';
+        baseUrl = utils.url.urlJoin(baseUrl, config.get('routeKeywords').author, slugParam, 'rss/');
     } else {
-        baseUrl += '/rss/';
+        baseUrl = utils.url.urlJoin(baseUrl, 'rss/');
     }
 
     return baseUrl;
@@ -81,7 +83,7 @@ getFeedXml = function getFeedXml(path, data) {
 generateTags = function generateTags(data) {
     if (data.tags) {
         return data.tags.reduce(function (tags, tag) {
-            if (tag.visibility !== 'internal' || !labs.isSet('internalTags')) {
+            if (tag.visibility !== 'internal') {
                 tags.push(tag.name);
             }
             return tags;
@@ -98,6 +100,7 @@ generateFeed = function generateFeed(data) {
         generator: 'Ghost ' + data.version,
         feed_url: data.feedUrl,
         site_url: data.siteUrl,
+        image_url: utils.url.urlFor({relativeUrl: 'favicon.png'}, true),
         ttl: '60',
         custom_namespaces: {
             content: 'http://purl.org/rss/1.0/modules/content/',
@@ -106,12 +109,12 @@ generateFeed = function generateFeed(data) {
     });
 
     data.results.posts.forEach(function forEach(post) {
-        var itemUrl = config.urlFor('post', {post: post, secure: data.secure}, true),
+        var itemUrl = utils.url.urlFor('post', {post: post, secure: data.secure}, true),
             htmlContent = processUrls(post.html, data.siteUrl, itemUrl),
             item = {
                 title: post.title,
                 description: post.meta_description || downsize(htmlContent.html(), {words: 50}),
-                guid: post.uuid,
+                guid: post.id,
                 url: itemUrl,
                 date: post.published_at,
                 categories: generateTags(post),
@@ -120,8 +123,8 @@ generateFeed = function generateFeed(data) {
             },
             imageUrl;
 
-        if (post.image) {
-            imageUrl = config.urlFor('image', {image: post.image, secure: data.secure}, true);
+        if (post.feature_image) {
+            imageUrl = utils.url.urlFor('image', {image: post.feature_image, secure: data.secure}, true);
 
             // Add a media content tag
             item.custom_elements.push({
@@ -172,12 +175,12 @@ generate = function generate(req, res, next) {
 
         // If page is greater than number of pages we have, redirect to last page
         if (pageParam > maxPage) {
-            return next(new errors.NotFoundError());
+            return next(new errors.NotFoundError({message: i18n.t('errors.errors.pageNotFound')}));
         }
 
         data.version = res.locals.safeVersion;
-        data.siteUrl = config.urlFor('home', {secure: req.secure}, true);
-        data.feedUrl = config.urlFor({relativeUrl: baseUrl, secure: req.secure}, true);
+        data.siteUrl = utils.url.urlFor('home', {secure: req.secure}, true);
+        data.feedUrl = utils.url.urlFor({relativeUrl: baseUrl, secure: req.secure}, true);
         data.secure = req.secure;
 
         return getFeedXml(req.originalUrl, data).then(function then(feedXml) {

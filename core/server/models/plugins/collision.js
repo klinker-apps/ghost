@@ -26,7 +26,11 @@ module.exports = function (Bookshelf) {
         sync: function timestamp(options) {
             var parentSync = ParentModel.prototype.sync.apply(this, arguments),
                 originalUpdateSync = parentSync.update,
+<<<<<<< HEAD
                 self = this, err;
+=======
+                self = this;
+>>>>>>> c16a58cf6836bab5075e5869d1f7b9a656ac18c9
 
             // CASE: only enabled for posts table
             if (this.tableName !== 'posts' ||
@@ -48,16 +52,27 @@ module.exports = function (Bookshelf) {
             parentSync.update = function update() {
                 var changed = _.omit(self.changed, [
                         'created_at', 'updated_at', 'author_id', 'id',
+<<<<<<< HEAD
                         'published_by', 'updated_by', 'html'
+=======
+                        'published_by', 'updated_by', 'html', 'plaintext'
+>>>>>>> c16a58cf6836bab5075e5869d1f7b9a656ac18c9
                     ]),
                     clientUpdatedAt = moment(self.clientData.updated_at || self.serverData.updated_at || new Date()),
                     serverUpdatedAt = moment(self.serverData.updated_at || clientUpdatedAt);
 
                 if (Object.keys(changed).length) {
                     if (clientUpdatedAt.diff(serverUpdatedAt) !== 0) {
+<<<<<<< HEAD
                         err = new errors.InternalServerError('Saving failed! Someone else is editing this post.');
                         err.code = 'UPDATE_COLLISION';
                         return Promise.reject(err);
+=======
+                        return Promise.reject(new errors.InternalServerError({
+                            message: 'Saving failed! Someone else is editing this post.',
+                            code: 'UPDATE_COLLISION'
+                        }));
+>>>>>>> c16a58cf6836bab5075e5869d1f7b9a656ac18c9
                     }
                 }
 

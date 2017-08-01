@@ -1,16 +1,13 @@
-var testUtils       = require('../utils'),
-    should          = require('should'),
-    sinon           = require('sinon'),
-    Promise         = require('bluebird'),
-    _               = require('lodash'),
+var should = require('should'),
+    sinon = require('sinon'),
+    testUtils = require('../utils'),
+    Promise = require('bluebird'),
+    _ = require('lodash'),
+    Models = require('../../server/models'),
+    errors = require('../../server/errors'),
+    permissions = require('../../server/permissions'),
 
-    // Stuff we are testing
-    Models          = require('../../server/models'),
-    permissions     = require('../../server/permissions'),
-//    effectivePerms  = require('../../server/permissions/effective'),
-//    context         = testUtils.context.owner,
-
-    sandbox         = sinon.sandbox.create();
+    sandbox = sinon.sandbox.create();
 
 describe('Permissions', function () {
     afterEach(function () {
@@ -130,7 +127,7 @@ describe('Permissions', function () {
         it('should return unchanged object for non-public context', function (done) {
             var internal = {context: 'internal'},
                 user = {context: {user: 1}},
-                app =  {context: {app: 1}};
+                app = {context: {app: 1}};
 
             permissions.applyPublicRules('posts', 'browse', _.cloneDeep(internal)).then(function (result) {
                 result.should.eql(internal);
@@ -174,7 +171,7 @@ describe('Permissions', function () {
             permissions.applyPublicRules('posts', 'read', _.cloneDeep(draft)).then(function () {
                 done('Did not throw an error for draft');
             }).catch(function (err) {
-                err.should.be.a.String();
+                (err instanceof errors.NoPermissionError).should.eql(true);
                 done();
             });
         });
@@ -185,7 +182,7 @@ describe('Permissions', function () {
             permissions.applyPublicRules('posts', 'browse', _.cloneDeep(draft)).then(function () {
                 done('Did not throw an error for draft');
             }).catch(function (err) {
-                err.should.be.a.String();
+                (err instanceof errors.NoPermissionError).should.eql(true);
                 done();
             });
         });
@@ -214,7 +211,7 @@ describe('Permissions', function () {
             permissions.applyPublicRules('posts', 'browse', _.cloneDeep(draft)).then(function () {
                 done('Did not throw an error for draft');
             }).catch(function (err) {
-                err.should.be.a.String();
+                (err instanceof errors.NoPermissionError).should.eql(true);
                 done();
             });
         });
@@ -225,7 +222,7 @@ describe('Permissions', function () {
             permissions.applyPublicRules('posts', 'browse', _.cloneDeep(draft)).then(function () {
                 done('Did not throw an error for draft');
             }).catch(function (err) {
-                err.should.be.a.String();
+                (err instanceof errors.NoPermissionError).should.eql(true);
                 done();
             });
         });
@@ -236,13 +233,14 @@ describe('Permissions', function () {
             permissions.applyPublicRules('posts', 'read', _.cloneDeep(draft)).then(function () {
                 done('Did not throw an error for draft');
             }).catch(function (err) {
-                err.should.be.a.String();
-                draft = {context: {},  data: {status: 'draft', uuid: '1234-abcd', slug: 'abcd'}};
+                (err instanceof errors.NoPermissionError).should.eql(true);
+
+                draft = {context: {}, data: {status: 'draft', uuid: '1234-abcd', slug: 'abcd'}};
 
                 return permissions.applyPublicRules('posts', 'read', _.cloneDeep(draft)).then(function () {
                     done('Did not throw an error for draft');
                 }).catch(function (err) {
-                    err.should.be.a.String();
+                    (err instanceof errors.NoPermissionError).should.eql(true);
                     done();
                 });
             });
@@ -255,7 +253,7 @@ describe('Permissions', function () {
                 result.should.not.eql(publicContext);
                 result.should.eql({
                     context: {},
-                    status: 'active'
+                    status: 'all'
                 });
 
                 return permissions.applyPublicRules('users', 'browse', _.extend({}, _.cloneDeep(publicContext), {status: 'active'}));
@@ -267,17 +265,6 @@ describe('Permissions', function () {
 
                 done();
             }).catch(done);
-        });
-
-        it('should throw an error for an inactive user', function (done) {
-            var inactive = {context: {}, status: 'inactive'};
-
-            permissions.applyPublicRules('users', 'browse', _.cloneDeep(inactive)).then(function () {
-                done('Did not throw an error for inactive');
-            }).catch(function (err) {
-                err.should.be.a.String();
-                done();
-            });
         });
     });
 

@@ -2,11 +2,33 @@
 //
 // Figure out which template should be used to render a request
 // based on the templates which are allowed, and what is available in the theme
-var _      = require('lodash'),
-    config = require('../../config');
+// TODO: consider where this should live as it deals with channels, singles, and errors
+var _ = require('lodash'),
+    path = require('path'),
+    config = require('../../config'),
+    themes = require('../../themes');
 
-function getActiveThemePaths(activeTheme) {
-    return config.paths.availableThemes[activeTheme];
+/**
+ * ## Get Error Template Hierarchy
+ *
+ * Fetch the ordered list of templates that can be used to render this error statusCode.
+ *
+ * The default is the
+ *
+ * @param {integer} statusCode
+ * @returns {String[]}
+ */
+function getErrorTemplateHierarchy(statusCode) {
+    var errorCode = _.toString(statusCode),
+        templateList = ['error'];
+
+    // Add error class template: E.g. error-4xx.hbs or error-5xx.hbs
+    templateList.unshift('error-' + errorCode[0] + 'xx');
+
+    // Add statusCode specific template: E.g. error-404.hbs
+    templateList.unshift('error-' + errorCode);
+
+    return templateList;
 }
 
 /**
@@ -70,31 +92,52 @@ function getSingleTemplateHierarchy(single) {
  * Taking the ordered list of allowed templates for this request
  * Cycle through and find the first one which has a match in the theme
  *
- * @param {Object} themePaths
- * @param {Array} templateList
+ * @param {Array|String} templateList
+ * @param {String} fallback - a fallback template
  */
-function pickTemplate(themePaths, templateList) {
-    var template = _.find(templateList, function (template) {
-        return themePaths.hasOwnProperty(template + '.hbs');
-    });
+function pickTemplate(templateList, fallback) {
+    var template;
+
+    if (!_.isArray(templateList)) {
+        templateList = [templateList];
+    }
+
+    if (!themes.getActive()) {
+        template = fallback;
+    } else {
+        template = _.find(templateList, function (template) {
+            return themes.getActive().hasTemplate(template);
+        });
+    }
 
     if (!template) {
-        template = templateList[templateList.length - 1];
+        template = fallback;
     }
 
     return template;
 }
 
-function getTemplateForSingle(activeTheme, single) {
-    return pickTemplate(getActiveThemePaths(activeTheme), getSingleTemplateHierarchy(single));
+function getTemplateForSingle(single) {
+    var templateList = getSingleTemplateHierarchy(single),
+        fallback = templateList[templateList.length - 1];
+    return pickTemplate(templateList, fallback);
 }
 
-function getTemplateForChannel(activeTheme, channelOpts) {
-    return pickTemplate(getActiveThemePaths(activeTheme), getChannelTemplateHierarchy(channelOpts));
+function getTemplateForChannel(channelOpts) {
+    var templateList = getChannelTemplateHierarchy(channelOpts),
+        fallback = templateList[templateList.length - 1];
+    return pickTemplate(templateList, fallback);
+}
+
+function getTemplateForError(statusCode) {
+    var templateList = getErrorTemplateHierarchy(statusCode),
+        fallback = path.resolve(config.get('paths').defaultViews, 'error.hbs');
+    return pickTemplate(templateList, fallback);
 }
 
 module.exports = {
-    getActiveThemePaths: getActiveThemePaths,
     channel: getTemplateForChannel,
-    single: getTemplateForSingle
+    single: getTemplateForSingle,
+    error: getTemplateForError,
+    pickTemplate: pickTemplate
 };

@@ -1,11 +1,11 @@
-var testUtils    = require('../../utils'),
-    should       = require('should'),
-    sequence     = require('../../../server/utils/sequence'),
-    _            = require('lodash'),
+var should = require('should'),
+    testUtils = require('../../utils'),
+    sequence = require('../../../server/utils/sequence'),
+    _ = require('lodash'),
 
     // Stuff we are testing
-    AppModel     = require('../../../server/models/app').App,
-    context      = testUtils.context.admin;
+    AppModel = require('../../../server/models/app').App,
+    context = testUtils.context.admin;
 
 describe('App Model', function () {
     // Keep the DB clean
@@ -28,7 +28,7 @@ describe('App Model', function () {
     });
 
     it('can findOne', function (done) {
-        AppModel.findOne({id: 1}).then(function (foundApp) {
+        AppModel.findOne({id: testUtils.DataGenerator.Content.apps[0].id}).then(function (foundApp) {
             should.exist(foundApp);
 
             foundApp.get('created_at').should.be.an.instanceof(Date);
@@ -38,12 +38,12 @@ describe('App Model', function () {
     });
 
     it('can edit', function (done) {
-        AppModel.findOne({id: 1}).then(function (foundApp) {
+        AppModel.findOne({id: testUtils.DataGenerator.Content.apps[0].id}).then(function (foundApp) {
             should.exist(foundApp);
 
             return foundApp.set({name: 'New App'}).save(null, context);
         }).then(function () {
-            return AppModel.findOne({id: 1});
+            return AppModel.findOne({id: testUtils.DataGenerator.Content.apps[0].id});
         }).then(function (updatedApp) {
             should.exist(updatedApp);
 
@@ -66,7 +66,7 @@ describe('App Model', function () {
     });
 
     it('can destroy', function (done) {
-        var firstApp = {id: 1};
+        var firstApp = {id: testUtils.DataGenerator.Content.apps[0].id};
 
         AppModel.findOne(firstApp).then(function (foundApp) {
             should.exist(foundApp);

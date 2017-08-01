@@ -1,28 +1,15 @@
-var should = require('should'),
+var should = require('should'), // jshint ignore:line
     sinon = require('sinon'),
     rewire = require('rewire'),
     _ = require('lodash'),
     Promise = require('bluebird'),
     crypto = require('crypto'),
     fs = require('fs'),
-
-    // Stuff we are testing
-    db = require('../../server/data/db'),
-    errors = require('../../server/errors'),
     models = require('../../server/models'),
     exporter = require('../../server/data/export'),
     schema = require('../../server/data/schema'),
-
-    migration = rewire('../../server/data/migration'),
-    fixtures = require('../../server/data/migration/fixtures'),
-    populate = require('../../server/data/migration/populate'),
-    update = rewire('../../server/data/migration/update'),
-    updates004 = require('../../server/data/migration/004'),
-    updates005 = require('../../server/data/migration/005'),
-    updates008 = require('../../server/data/migration/008'),
-
-    defaultSettings = schema.defaultSettings,
-    schemaTables = Object.keys(schema.tables),
+    backupDatabase = rewire('../../server/data/db/backup'),
+    fixtures = require('../../server/data/schema/fixtures'),
 
     sandbox = sinon.sandbox.create();
 
@@ -32,9 +19,14 @@ var should = require('should'),
 // both of which are required for migrations to work properly.
 describe('DB version integrity', function () {
     // Only these variables should need updating
+<<<<<<< HEAD
     var currentDbVersion = '009',
         currentSchemaHash = 'b3bdae210526b2d4393359c3e45d7f83',
         currentFixturesHash = '30b0a956b04e634e7f2cddcae8d2fd20';
+=======
+    var currentSchemaHash = '903948c99647dd2ba480ab5e97611032',
+        currentFixturesHash = '6948548fee557adc738330522dc06d24';
+>>>>>>> c16a58cf6836bab5075e5869d1f7b9a656ac18c9
 
     // If this test is failing, then it is likely a change has been made that requires a DB version bump,
     // and the values above will need updating as confirmation
@@ -49,36 +41,21 @@ describe('DB version integrity', function () {
             });
         });
 
-        schemaHash = crypto.createHash('md5').update(JSON.stringify(tablesNoValidation)).digest('hex');
-        fixturesHash = crypto.createHash('md5').update(JSON.stringify(fixtures.fixtures)).digest('hex');
+        schemaHash = crypto.createHash('md5').update(JSON.stringify(tablesNoValidation), 'binary').digest('hex');
+        fixturesHash = crypto.createHash('md5').update(JSON.stringify(fixtures), 'binary').digest('hex');
 
-        // Test!
-        defaultSettings.core.databaseVersion.defaultValue.should.eql(currentDbVersion);
         schemaHash.should.eql(currentSchemaHash);
         fixturesHash.should.eql(currentFixturesHash);
-        schema.versioning.canMigrateFromVersion.should.eql('003');
     });
 });
 
 describe('Migrations', function () {
-    var loggerStub, resetLogger;
-
     before(function () {
         models.init();
     });
 
     afterEach(function () {
         sandbox.restore();
-        resetLogger();
-    });
-
-    beforeEach(function () {
-        loggerStub = {
-            info: sandbox.stub(),
-            warn: sandbox.stub()
-        };
-
-        resetLogger = update.__set__('logger', loggerStub);
     });
 
     describe('Backup', function () {
@@ -91,83 +68,16 @@ describe('Migrations', function () {
         });
 
         it('should create a backup JSON file', function (done) {
-            migration.backupDatabase(loggerStub).then(function () {
+            backupDatabase().then(function () {
                 exportStub.calledOnce.should.be.true();
                 filenameStub.calledOnce.should.be.true();
                 fsStub.calledOnce.should.be.true();
-                loggerStub.info.calledTwice.should.be.true();
-
-                done();
-            }).catch(done);
-        });
-
-        it('should fall back to console.log if no logger provided', function (done) {
-            var noopStub = sandbox.stub(_, 'noop');
-
-            migration.backupDatabase().then(function () {
-                exportStub.calledOnce.should.be.true();
-                filenameStub.calledOnce.should.be.true();
-                fsStub.calledOnce.should.be.true();
-                noopStub.calledTwice.should.be.true();
-                // restore early so we get the test output
-                noopStub.restore();
 
                 done();
             }).catch(done);
         });
     });
-
-    describe('Reset', function () {
-        var deleteStub;
-
-        beforeEach(function () {
-            deleteStub = sandbox.stub(schema.commands, 'deleteTable').returns(new Promise.resolve());
-        });
-
-        it('should delete all tables in reverse order', function (done) {
-            migration.reset().then(function (result) {
-                should.exist(result);
-                result.should.be.an.Array().with.lengthOf(schemaTables.length);
-
-                deleteStub.called.should.be.true();
-                deleteStub.callCount.should.be.eql(schemaTables.length);
-                // First call should be called with the last table
-                deleteStub.firstCall.calledWith(schemaTables[schemaTables.length - 1]).should.be.true();
-                // Last call should be called with the first table
-                deleteStub.lastCall.calledWith(schemaTables[0]).should.be.true();
-
-                done();
-            }).catch(done);
-        });
-
-        it('should delete all tables in reverse order when called twice in a row', function (done) {
-            migration.reset().then(function (result) {
-                should.exist(result);
-                result.should.be.an.Array().with.lengthOf(schemaTables.length);
-
-                deleteStub.called.should.be.true();
-                deleteStub.callCount.should.be.eql(schemaTables.length);
-                // First call should be called with the last table
-                deleteStub.firstCall.calledWith(schemaTables[schemaTables.length - 1]).should.be.true();
-                // Last call should be called with the first table
-                deleteStub.lastCall.calledWith(schemaTables[0]).should.be.true();
-
-                return migration.reset();
-            }).then(function (result) {
-                should.exist(result);
-                result.should.be.an.Array().with.lengthOf(schemaTables.length);
-
-                deleteStub.called.should.be.true();
-                deleteStub.callCount.should.be.eql(schemaTables.length * 2);
-                // First call (second set) should be called with the last table
-                deleteStub.getCall(schemaTables.length).calledWith(schemaTables[schemaTables.length - 1]).should.be.true();
-                // Last call (second Set) should be called with the first table
-                deleteStub.getCall(schemaTables.length * 2 - 1).calledWith(schemaTables[0]).should.be.true();
-
-                done();
-            }).catch(done);
-        });
-    });
+<<<<<<< HEAD
 
     describe('Populate', function () {
         var createStub, fixturesStub, populateSettingsStub;
@@ -1565,4 +1475,6 @@ describe('Migrations', function () {
             });
         });
     });
+=======
+>>>>>>> c16a58cf6836bab5075e5869d1f7b9a656ac18c9
 });

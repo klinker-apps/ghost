@@ -1,15 +1,13 @@
 var router           = require('./lib/router'),
-    registerAmpHelpers  = require('./lib/helpers'),
-
-    // Dirty requires
-    config     = require('../../config');
+    registerHelpers  = require('./lib/helpers'),
+    config           = require('../../config');
 
 module.exports = {
     activate: function activate(ghost) {
-        registerAmpHelpers(ghost);
+        registerHelpers(ghost);
     },
 
     setupRoutes: function setupRoutes(blogRouter) {
-        blogRouter.use('*/' + config.routeKeywords.amp + '/', router);
+        blogRouter.use('*/' + config.get('routeKeywords').amp + '/', router);
     }
 };

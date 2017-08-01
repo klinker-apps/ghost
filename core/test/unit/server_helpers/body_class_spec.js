@@ -1,15 +1,13 @@
-var should         = require('should'),
-    hbs            = require('express-hbs'),
-    utils          = require('./utils'),
-    configUtils    = require('../../utils/configUtils'),
+var should = require('should'), // jshint ignore:line
+    themeList = require('../../../server/themes').list,
 
 // Stuff we are testing
-    handlebars     = hbs.handlebars,
-    helpers        = require('../../../server/helpers');
+    helpers = require('../../../server/helpers');
 
 describe('{{body_class}} helper', function () {
     var options = {};
     before(function () {
+<<<<<<< HEAD
         utils.loadHelpers();
         configUtils.set({paths: {
             availableThemes: {
@@ -20,8 +18,18 @@ describe('{{body_class}} helper', function () {
                     'page-about.hbs': '/content/themes/casper/page-about.hbs',
                     'post.hbs': '/content/themes/casper/post.hbs'
                 }
+=======
+        themeList.init({
+            casper: {
+                assets: null,
+                'default.hbs': '/content/themes/casper/default.hbs',
+                'index.hbs': '/content/themes/casper/index.hbs',
+                'page.hbs': '/content/themes/casper/page.hbs',
+                'page-about.hbs': '/content/themes/casper/page-about.hbs',
+                'post.hbs': '/content/themes/casper/post.hbs'
+>>>>>>> c16a58cf6836bab5075e5869d1f7b9a656ac18c9
             }
-        }});
+        });
     });
 
     beforeEach(function () {
@@ -29,18 +37,14 @@ describe('{{body_class}} helper', function () {
             data: {
                 root: {
                     context: [],
-                    settings: {activeTheme: 'casper'}
+                    settings: {active_theme: 'casper'}
                 }
             }
         };
     });
 
     after(function () {
-        configUtils.restore();
-    });
-
-    it('has loaded body_class helper', function () {
-        should.exist(handlebars.helpers.body_class);
+        themeList.init();
     });
 
     it('can render class string', function () {
@@ -85,7 +89,7 @@ describe('{{body_class}} helper', function () {
                 {relativeUrl: '/page/4'}
             );
 
-            rendered.string.should.equal('paged archive-template');
+            rendered.string.should.equal('paged');
         });
 
         it('tag page', function () {
@@ -103,7 +107,7 @@ describe('{{body_class}} helper', function () {
                 {relativeUrl: '/tag/foo/page/2', tag: {slug: 'foo'}}
             );
 
-            rendered.string.should.equal('tag-template tag-foo paged archive-template');
+            rendered.string.should.equal('tag-template tag-foo paged');
         });
 
         it('author page', function () {
@@ -121,7 +125,7 @@ describe('{{body_class}} helper', function () {
                 {relativeUrl: '/author/bar/page/2', author: {slug: 'bar'}}
             );
 
-            rendered.string.should.equal('author-template author-bar paged archive-template');
+            rendered.string.should.equal('author-template author-bar paged');
         });
 
         it('private route for password protection', function () {
@@ -145,19 +149,19 @@ describe('{{body_class}} helper', function () {
         it('a static page', function () {
             var rendered = callBodyClassWithContext(
                 ['page'],
-                {relativeUrl: '/about', post: {page: true}}
+                {relativeUrl: '/about', post: {page: true, slug: 'about'}}
             );
 
-            rendered.string.should.equal('post-template page-template page');
+            rendered.string.should.equal('page-template page-about');
         });
 
-        it('a static page with custom template', function () {
+        it('a static page with custom template (is now the same as one without)', function () {
             var rendered = callBodyClassWithContext(
                 ['page'],
                 {relativeUrl: '/about', post: {page: true, slug: 'about'}}
             );
 
-            rendered.string.should.equal('post-template page-template page page-about page-template-about');
+            rendered.string.should.equal('page-template page-about');
         });
     });
 });
