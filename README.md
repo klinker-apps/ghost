@@ -19,6 +19,7 @@ The project is maintained by a non-profit organisation called the **Ghost Founda
 
 **NOTE: If you’re stuck, can’t get something working or need some help, please head on over and join our [Slack community](https://ghost.org/slack/) rather than opening an issue.**
 
+
 # Important: Node.js version support
 
 See [Supported Node.js versions](https://docs.ghost.org/v0.11.9/docs/supported-node-versions)
